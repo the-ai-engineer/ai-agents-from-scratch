@@ -12,6 +12,24 @@ load_dotenv()
 client = OpenAI()
 
 
+class ConversationMemory:
+    """Simple helper to manage conversation history"""
+
+    def __init__(self, instructions: str = None):
+        self.messages = []
+        if instructions:
+            self.messages.append({"role": "system", "content": instructions})
+
+    def add_message(self, role: str, content: str):
+        self.messages.append({"role": role, "content": content})
+
+    def get_history(self):
+        return self.messages
+
+
+## Example 1: Basic API Call
+
+
 def basic_response():
     """Example 1: Basic API call"""
     response = client.responses.create(
@@ -33,7 +51,6 @@ def streaming_response():
         stream=True,
     )
 
-    print("\nStreaming response:")
     for event in stream:
         if event.type == "content.delta":
             print(event.delta, end="", flush=True)
@@ -41,25 +58,26 @@ def streaming_response():
 
 
 def stateful_conversation():
-    """Example 3: Multi-turn conversation with history"""
+    """Example 3: Multi-turn conversation with history using ConversationMemory"""
+    memory = ConversationMemory()
+
     # First turn
+    memory.add_message("user", "What is 15 * 24?")
     response1 = client.responses.create(
         model="gpt-4o-mini",
-        input="What is 15 * 24?",
+        input=memory.get_history(),
         temperature=0,
     )
+    memory.add_message("assistant", response1.output_text)
 
     print("\nUser: What is 15 * 24?")
     print(f"Assistant: {response1.output_text}")
 
-    # Second turn - pass conversation history
+    # Second turn - memory automatically includes full history
+    memory.add_message("user", "Now multiply that result by 2")
     response2 = client.responses.create(
         model="gpt-4o-mini",
-        input=[
-            {"role": "user", "content": "What is 15 * 24?"},
-            {"role": "assistant", "content": response1.output_text},
-            {"role": "user", "content": "Now multiply that result by 2"},
-        ],
+        input=memory.get_history(),
         temperature=0,
     )
 

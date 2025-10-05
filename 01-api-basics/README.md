@@ -20,6 +20,20 @@ Most developers jump straight into frameworks that hide these fundamentals. When
 
 The OpenAI API gives you programmatic access to GPT models via HTTP endpoints. The concept is simple: you send structured inputs like prompts and context, and you get structured outputs like text or JSON.
 
+```mermaid
+graph LR
+    A[💻 Your Code] -->|HTTP Request| B[☁️ OpenAI API]
+    B -->|Process with GPT| C[🤖 LLM]
+    C -->|Generate Response| B
+    B -->|HTTP Response| D[📄 Text/JSON Output]
+    D --> A
+
+    style A fill:#e8f5e9
+    style B fill:#e1f5ff
+    style C fill:#fff9c4
+    style D fill:#c8e6c9
+```
+
 The **Responses API** is OpenAI's recommended way to interact with GPT models. Released in March 2025, it's an evolution of Chat Completions that brings added simplicity and powerful agentic primitives. It can manage conversation state server-side, supports built-in tools like web search, and provides better performance through improved caching.
 
 ### Message Types
@@ -31,6 +45,26 @@ Every API call includes messages with specific roles:
 - **assistant**: Previous responses from the AI (used for conversation history)
 
 Think of the system message as programming the AI's personality and expertise. The user message is the actual query. Assistant messages maintain conversation context.
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant C as 💻 Your Code
+    participant API as ☁️ OpenAI API
+
+    Note over C: Initialize with instructions
+    C->>API: instructions="You are a helpful tutor"
+
+    U->>C: "Explain async/await"
+    C->>API: input="Explain async/await"
+    API->>C: response.output_text
+    C->>U: "Async/await allows..."
+
+    U->>C: "Give me an example"
+    C->>API: [previous context + "Give me an example"]
+    API->>C: response.output_text
+    C->>U: "Here's an example: async def..."
+```
 
 ### Key Parameters You Need to Know
 
@@ -58,6 +92,36 @@ OPENAI_API_KEY=your-key-here
 ```
 
 Never hardcode API keys directly in your code. Always use environment variables.
+
+## ConversationMemory: Managing Multi-Turn Conversations
+
+Our example code includes a `ConversationMemory` helper class to manage conversation history. This makes multi-turn conversations easier and less error-prone:
+
+```mermaid
+graph TD
+    A[🎯 ConversationMemory] --> B[Add messages]
+    B --> C{Message Role}
+    C -->|user| D[📝 User Message]
+    C -->|assistant| E[🤖 Assistant Response]
+    C -->|system| F[⚙️ System Instructions]
+
+    D --> G[📚 History Array]
+    E --> G
+    F --> G
+
+    G --> H[🔄 Pass to API]
+    H --> I[🎯 Maintains Context]
+
+    style A fill:#fff9c4
+    style G fill:#e1f5ff
+    style I fill:#c8e6c9
+```
+
+**Why use ConversationMemory?**
+- Less error-prone than manual history management
+- Clean API: `memory.add_message(role, content)`
+- Maintains proper message structure
+- Foundation for more advanced patterns in later lessons
 
 ## Your First API Call
 
@@ -151,18 +215,6 @@ for event in stream:
 Use streaming for interactive applications where responsiveness matters.
 
 The Responses API provides cleaner streaming events compared to Chat Completions, making it easier to handle different types of updates (text, tool calls, etc.).
-
-## Cost Estimation
-
-Understanding costs is essential for production systems.
-
-GPT-4o-mini pricing (as of 2024):
-- Input: $0.15 per 1M tokens
-- Output: $0.60 per 1M tokens
-
-Example calculation: A 500-token prompt with a 200-token response costs approximately $0.0002.
-
-That seems cheap, but at scale it adds up. A system processing 10,000 requests per day could cost $2 per day, or $730 per year, just for API calls. Always track token usage.
 
 ## Error Handling
 

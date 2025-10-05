@@ -20,6 +20,29 @@ This limitation makes LLMs useless for most real-world tasks. You need AI that c
 
 Tool calling bridges the gap between LLM intelligence and real-world actions. You define functions the AI can call—like `get_weather(city)` or `search_database(query)`—and the LLM decides when and how to use them.
 
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant Code as 💻 Your Code
+    participant LLM as 🧠 LLM
+    participant Tool as 🔧 Tool Function
+
+    User->>Code: "What's the weather in Paris?"
+    Code->>LLM: Query + Tool Definitions
+    LLM->>Code: Call get_weather(city="Paris")
+    Note over Code: Parse arguments
+    Code->>Tool: Execute get_weather("Paris")
+    Tool->>Code: "Sunny, 22°C"
+    Code->>LLM: Tool result
+    LLM->>Code: "In Paris, it's sunny and 22°C"
+    Code->>User: Final answer
+
+    style User fill:#e8f5e9
+    style Code fill:#e1f5ff
+    style LLM fill:#fff9c4
+    style Tool fill:#c8e6c9
+```
+
 Here's the pattern:
 
 1. **User asks a question**: "What's the weather in Paris?"

@@ -26,9 +26,32 @@ You need agents that can think through problems step-by-step, automatically.
 
 The agent loop is a simple but powerful pattern. Instead of calling the API once, you loop until the agent has a final answer.
 
+```mermaid
+graph TD
+    A[👤 User Query] --> B[📚 Initialize Conversation History]
+    B --> C[🤖 Send to LLM with Tools]
+
+    C --> D{LLM Decision}
+
+    D -->|Needs Tools| E[🔧 Execute Tool Calls]
+    E --> F[📝 Add Results to History]
+    F --> G{Max Iterations?}
+    G -->|No| C
+    G -->|Yes| H[⚠️ Stop: Iteration Limit]
+
+    D -->|Final Answer| I[✅ Return Response to User]
+
+    style A fill:#e8f5e9
+    style C fill:#fff9c4
+    style D fill:#ffe0b2
+    style E fill:#e1f5ff
+    style F fill:#e1f5ff
+    style I fill:#c8e6c9
+    style H fill:#ffcdd2
+```
+
 Here's the core flow:
 
-```
 1. Send user message + available tools to LLM
 2. LLM decides: "I need to call tools" OR "I have the final answer"
 3. If tools called:
@@ -37,7 +60,6 @@ Here's the core flow:
    - Go back to step 1
 4. If no tools called:
    - Return final answer to user
-```
 
 The key insight: the LLM sees the tool results and can decide what to do next. Need more information? Call another tool. Ready to answer? Return text.
 
@@ -52,6 +74,33 @@ When the LLM sees the history on the next iteration, it understands what it alre
 ### Multi-Step Example
 
 User: "What's the weather in Paris and what time is it there?"
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant Agent as 🤖 Agent Loop
+    participant LLM as 🧠 LLM
+    participant Tools as 🔧 Tools
+
+    User->>Agent: "Weather & time in Paris?"
+
+    Note over Agent: Iteration 1
+    Agent->>LLM: Query + [get_weather, get_current_time]
+    LLM->>Agent: Call get_weather("Paris") + get_current_time("Paris")
+    Agent->>Tools: Execute both tools
+    Tools->>Agent: Results: 22°C sunny, 14:30
+    Note over Agent: Add results to history
+
+    Note over Agent: Iteration 2
+    Agent->>LLM: Original query + tool results
+    LLM->>Agent: Final answer (no tool calls)
+    Agent->>User: "In Paris, it's 14:30 and 22°C sunny"
+
+    style User fill:#e8f5e9
+    style Agent fill:#e1f5ff
+    style LLM fill:#fff9c4
+    style Tools fill:#c8e6c9
+```
 
 **Iteration 1:**
 - LLM sees user message + available tools
