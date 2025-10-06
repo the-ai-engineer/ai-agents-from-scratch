@@ -42,36 +42,34 @@ class Agent:
         })
 
     def chat(self, message: str) -> str:
-        """Send a message and get a response"""
+        """Send a message and get a response
+
+        Note: Uses Chat Completions API because tool calling requires it.
+        """
+        # Add system message if this is the first message
+        if not self.conversation_history and self.instructions:
+            self.conversation_history.append({"role": "system", "content": self.instructions})
+
         self.conversation_history.append({"role": "user", "content": message})
 
         for iteration in range(self.max_iterations):
-            response = self.client.responses.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
-                instructions=self.instructions,
-                input=self.conversation_history,
+                messages=self.conversation_history,
                 tools=self.tool_schemas if self.tool_schemas else None
             )
 
-            if not hasattr(response, 'tool_calls') or not response.tool_calls:
-                answer = response.output_text
+            message_obj = response.choices[0].message
+
+            if not message_obj.tool_calls:
+                answer = message_obj.content or "No response generated"
                 self.conversation_history.append({"role": "assistant", "content": answer})
                 return answer
 
             # Handle tool calls
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": response.output_text or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments}
-                    } for tc in response.tool_calls
-                ]
-            })
+            self.conversation_history.append(message_obj)
 
-            for tool_call in response.tool_calls:
+            for tool_call in message_obj.tool_calls:
                 if tool_call.function.name in self.tools:
                     args = json.loads(tool_call.function.arguments)
                     result = str(self.tools[tool_call.function.name](**args))

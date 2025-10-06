@@ -1,4 +1,4 @@
-# Lesson 09: Memory and State Management for Long-Running Agents
+# Lesson 10: Advanced Memory - Token Limits and Persistence
 
 ## What You'll Learn
 
@@ -499,7 +499,7 @@ Compare token usage and response quality across strategies.
 
 ## Next Steps
 
-You now have a complete, production-ready agent architecture with memory management. Next, explore [Lesson 10 - RAG Integration](../10-rag-integration) to add knowledge retrieval capabilities to your agents.
+You now have a complete, production-ready agent architecture with memory management. Next, explore [Lesson 11 - FAQ Agent with RAG](../11-example-faq-agent) to add knowledge retrieval capabilities using vector databases.
 
 ## Resources
 

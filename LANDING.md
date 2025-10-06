@@ -28,6 +28,12 @@ All using **first principles**—no frameworks, no shortcuts, no hidden complexi
 
 ---
 
+## The Core Insight
+
+> **"Agents are models using tools in a loop."**
+
+This memorable definition captures everything about autonomous agents. In this course, you'll understand not just HOW to build this loop, but WHY it works and WHEN to use different patterns.
+
 ## Course Highlights
 
 ### 🎯 Industry-Standard Patterns
@@ -79,18 +85,18 @@ Understand the **"why"** behind every decision:
 
 ## Curriculum Overview
 
-### 🎓 Foundations (Lessons 01-03)
+### 🎓 Foundations (Lessons 01-04)
 - OpenAI API fundamentals with Responses API
+- **ConversationMemory** for managing context
 - Prompt engineering techniques
 - Structured outputs with Pydantic
-- **ConversationMemory** for managing context
 
-### 🔧 Tool Calling (Lessons 04-05)
+### 🔧 Tool Calling (Lessons 05-06)
 - Function calling basics
 - Tool validation with Pydantic schemas
 - Multi-tool orchestration
 
-### 🏭 Workflow Patterns (Lesson 06)
+### 🏭 Workflow Patterns (Lesson 07)
 - **5 fundamental patterns** from Anthropic
 - Sequential chaining for pipelines
 - Routing for conditional logic
@@ -99,18 +105,18 @@ Understand the **"why"** behind every decision:
 - Evaluator-Optimizer for quality control
 - **WorkflowState** for managing intermediate results
 
-### 🤖 Agent Architecture (Lessons 07-09)
+### 🤖 Agent Architecture (Lessons 08-10)
 - Agent loop pattern (the core of autonomy)
 - Building reusable Agent classes
-- Memory management strategies
+- Advanced memory management (token limits, trimming, persistence)
 - Multi-step reasoning
 
-### 🚀 Production Examples (Lessons 10-11)
+### 🚀 Production Examples (Lessons 11-12)
 - FAQ bot with RAG (ChromaDB + OpenAI embeddings)
 - Research assistant with tool calling
 - Real-world deployment patterns
 
-### 🎯 Advanced (Lessons 12-13)
+### 🎯 Advanced (Lessons 13-14)
 - ReAct pattern for planning and reasoning
 - FastAPI deployment with streaming
 - Stateful conversation management
@@ -260,10 +266,10 @@ A: 8-12 hours to complete all lessons. Each lesson is 30-60 minutes of focused l
 A: The patterns are production-ready. For production deployment, you'd add authentication, monitoring, rate limiting, etc. We focus on the AI patterns, not DevOps.
 
 **Q: What's the difference between workflows and agents?**
-A: Workflows have predefined flows (you decide the steps). Agents decide their own flows dynamically (LLM chooses). Lesson 06 explains this in depth with visual diagrams.
+A: Workflows have predefined flows (you decide the steps). Agents decide their own flows dynamically (LLM chooses). Lesson 07 explains this in depth with visual diagrams.
 
 **Q: Do you cover vector databases?**
-A: Yes! Lesson 10 covers ChromaDB with OpenAI embeddings for RAG (Retrieval-Augmented Generation).
+A: Yes! Lesson 11 covers ChromaDB with OpenAI embeddings for RAG (Retrieval-Augmented Generation).
 
 **Q: What about Claude/Gemini/other models?**
 A: We use OpenAI for teaching, but the patterns work with any LLM. Swap the client and you're done.

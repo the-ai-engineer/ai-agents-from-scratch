@@ -1,4 +1,4 @@
-# Lesson 08: Building a Production-Ready Agent Class
+# Lesson 09: Building a Production-Ready Agent Class
 
 ## What You'll Learn
 
@@ -444,7 +444,7 @@ Notice how easy it is to create new agents once the abstraction is right. That's
 
 ## Next Steps
 
-Now that you have a production-ready agent architecture, move to [Lesson 09 - Memory](../09-memory) to learn how to manage conversation history, handle token limits, and persist state for long-running agents.
+Now that you have a production-ready agent architecture, move to [Lesson 10 - Advanced Memory](../10-advanced-memory) to learn how to manage conversation history, handle token limits, and persist state for long-running agents.
 
 ## Resources
 

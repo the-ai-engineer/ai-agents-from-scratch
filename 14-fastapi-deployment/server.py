@@ -1,7 +1,7 @@
 """
 Lesson 13: FastAPI Deployment
 
-Production-ready FastAPI server for your AI agent using the Responses API.
+Production-ready FastAPI server for your AI agent using the Chat Completions API.
 """
 
 import os
@@ -17,10 +17,10 @@ from openai import OpenAI
 load_dotenv()
 
 
-# === Agent Class (using Responses API) ===
+# === Agent Class (using Chat Completions API) ===
 
 class Agent:
-    """Simple agent for demonstration using Responses API"""
+    """Simple agent for demonstration using Chat Completions API"""
 
     def __init__(self, model: str = "gpt-4o-mini", instructions: str = None):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -30,40 +30,45 @@ class Agent:
         self.instructions = instructions or "You are a helpful assistant."
 
     def chat(self, message: str) -> str:
-        """Send a message and get a response using Responses API"""
+        """Send a message and get a response using Chat Completions API"""
+        # Add system message if this is the first message
+        if not self.conversation_history and self.instructions:
+            self.conversation_history.append({"role": "system", "content": self.instructions})
+
         self.conversation_history.append({"role": "user", "content": message})
 
-        response = self.client.responses.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            instructions=self.instructions,
-            input=self.conversation_history
+            messages=self.conversation_history
         )
 
-        assistant_message = response.output_text
+        assistant_message = response.choices[0].message.content or ""
         self.conversation_history.append({"role": "assistant", "content": assistant_message})
 
-        # Track tokens (Responses API uses input_tokens and output_tokens)
+        # Track tokens
         if response.usage:
             self.total_tokens += response.usage.total_tokens
 
-        return assistant_message or ""
+        return assistant_message
 
     def chat_stream(self, message: str):
-        """Stream response token by token using Responses API"""
+        """Stream response token by token using Chat Completions API"""
+        # Add system message if this is the first message
+        if not self.conversation_history and self.instructions:
+            self.conversation_history.append({"role": "system", "content": self.instructions})
+
         self.conversation_history.append({"role": "user", "content": message})
 
-        stream = self.client.responses.create(
+        stream = self.client.chat.completions.create(
             model=self.model,
-            instructions=self.instructions,
-            input=self.conversation_history,
+            messages=self.conversation_history,
             stream=True
         )
 
         full_response = ""
-        for event in stream:
-            # Responses API uses event-based streaming
-            if event.type == "content.delta":
-                content = event.delta
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
                 full_response += content
                 yield content
 
@@ -127,7 +132,7 @@ app.add_middleware(
 sessions: dict[str, Agent] = {}
 
 # Instructions for our agent
-INSTRUCTIONS = """You are a helpful AI assistant built from scratch using the Responses API.
+INSTRUCTIONS = """You are a helpful AI assistant built from scratch using the Chat Completions API.
 
 You can answer questions, help with tasks, and engage in conversation.
 Be concise, accurate, and friendly."""

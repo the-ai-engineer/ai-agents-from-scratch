@@ -36,7 +36,10 @@ def calculate(expression: str) -> str:
 
 
 def basic_tool_call():
-    """Example 1: Basic tool call"""
+    """Example 1: Basic tool call
+
+    Note: Uses Chat Completions API because tool calling requires it.
+    """
     tools = [{
         "type": "function",
         "function": {
@@ -59,14 +62,16 @@ def basic_tool_call():
     print(f"User: {user_message}")
 
     # Step 1: LLM decides to call tool
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
-        input=user_message,
+        messages=[{"role": "user", "content": user_message}],
         tools=tools
     )
 
-    if response.tool_calls:
-        tool_call = response.tool_calls[0]
+    message = response.choices[0].message
+
+    if message.tool_calls:
+        tool_call = message.tool_calls[0]
         print(f"Tool called: {tool_call.function.name}")
 
         # Step 2: Execute the tool
@@ -75,26 +80,26 @@ def basic_tool_call():
         print(f"Result: {result}")
 
         # Step 3: Return result to LLM for final response
-        input_with_result = [
+        messages = [
             {"role": "user", "content": user_message},
-            {"role": "assistant", "content": "", "tool_calls": [
-                {"id": tool_call.id, "type": "function",
-                 "function": {"name": tool_call.function.name, "arguments": tool_call.function.arguments}}
-            ]},
+            message,
             {"role": "tool", "tool_call_id": tool_call.id, "content": result}
         ]
 
-        final_response = client.responses.create(
+        final_response = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=input_with_result,
+            messages=messages,
             tools=tools
         )
 
-        print(f"Assistant: {final_response.output_text}")
+        print(f"Assistant: {final_response.choices[0].message.content}")
 
 
 def multiple_tools():
-    """Example 2: LLM chooses between multiple tools"""
+    """Example 2: LLM chooses between multiple tools
+
+    Note: Uses Chat Completions API because tool calling requires it.
+    """
     tools = [
         {
             "type": "function",
@@ -134,14 +139,16 @@ def multiple_tools():
     for question in questions:
         print(f"\n\nUser: {question}")
 
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=question,
+            messages=[{"role": "user", "content": question}],
             tools=tools
         )
 
-        if response.tool_calls:
-            tool_call = response.tool_calls[0]
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            tool_call = message.tool_calls[0]
             function_name = tool_call.function.name
             args = json.loads(tool_call.function.arguments)
 
@@ -156,22 +163,19 @@ def multiple_tools():
             print(f"Result: {result}")
 
             # Get final response
-            input_with_result = [
+            messages_with_result = [
                 {"role": "user", "content": question},
-                {"role": "assistant", "content": "", "tool_calls": [
-                    {"id": tool_call.id, "type": "function",
-                     "function": {"name": tool_call.function.name, "arguments": tool_call.function.arguments}}
-                ]},
+                message,
                 {"role": "tool", "tool_call_id": tool_call.id, "content": result}
             ]
 
-            final_response = client.responses.create(
+            final_response = client.chat.completions.create(
                 model="gpt-4o-mini",
-                input=input_with_result,
+                messages=messages_with_result,
                 tools=tools
             )
 
-            print(f"Assistant: {final_response.output_text}")
+            print(f"Assistant: {final_response.choices[0].message.content}")
 
 
 if __name__ == "__main__":

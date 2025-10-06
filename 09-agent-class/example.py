@@ -71,35 +71,32 @@ class Agent:
         return [t.to_openai_format() for t in self.tools.values()] if self.tools else None
 
     def chat(self, message: str) -> str:
-        """Send a message and get a response (handles agent loop internally)"""
+        """Send a message and get a response (handles agent loop internally)
+
+        Note: Uses Chat Completions API because Responses API doesn't support tool calling yet.
+        """
         self.conversation_history.append({"role": "user", "content": message})
 
         for iteration in range(self.max_iterations):
-            response = self.client.responses.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
-                input=self.conversation_history,
+                messages=self.conversation_history,
                 tools=self.tool_schemas
             )
 
+            message_obj = response.choices[0].message
+
             # If no tool calls, return final answer
-            if not response.tool_calls:
-                answer = response.output_text
+            if not message_obj.tool_calls:
+                answer = message_obj.content or "No response generated"
                 self.conversation_history.append({"role": "assistant", "content": answer})
                 return answer
 
             # Add assistant message with tool calls
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [
-                    {"id": tc.id, "type": "function",
-                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                    for tc in response.tool_calls
-                ]
-            })
+            self.conversation_history.append(message_obj)
 
             # Execute tools
-            for tool_call in response.tool_calls:
+            for tool_call in message_obj.tool_calls:
                 tool_name = tool_call.function.name
 
                 if tool_name in self.tools:

@@ -102,13 +102,17 @@ Break complex tasks into simple steps. When you have enough info, use FINISH."""
                     "content": "Provide your final answer."
                 })
 
-                final_response = self.client.responses.create(
+                # Add system message at the beginning if not present
+                messages = conversation
+                if not any(msg.get("role") == "system" for msg in messages):
+                    messages = [{"role": "system", "content": self.instructions}] + messages
+
+                final_response = self.client.chat.completions.create(
                     model=self.model,
-                    instructions=self.instructions,
-                    input=conversation
+                    messages=messages
                 )
 
-                return final_response.output_text
+                return final_response.choices[0].message.content
 
             # Execute the tool
             tool_func = self.tools.get(step.action)

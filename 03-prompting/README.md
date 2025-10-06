@@ -1,4 +1,4 @@
-# Lesson 02: Prompt Engineering That Gets Results
+# Lesson 03: Prompt Engineering That Gets Results
 
 ## What You'll Learn
 
@@ -214,7 +214,7 @@ Then test your improved prompt with 3-5 different customer reviews and verify yo
 
 ## Next Steps
 
-Now that you can write effective prompts, move to [Lesson 03 - Structured Output](../03-structured-output) to learn how to get type-safe, validated responses with guaranteed formats.
+Now that you can write effective prompts, move to [Lesson 04 - Structured Output](../04-structured-output) to learn how to get type-safe, validated responses with guaranteed formats.
 
 ## Resources
 

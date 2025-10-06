@@ -6,16 +6,25 @@ Learn how agents can reason through multiple steps and chain tools together.
 
 import os
 import json
+import sys
+from pathlib import Path
 from openai import OpenAI
-from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
+# Add parent directory to path to import tool_helpers
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from tool_helpers import Tool, safe_calculate
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def get_weather(city: str) -> str:
-    """Get weather for a city"""
+    """Get current weather for a city
+
+    Args:
+        city: City name (e.g., 'Paris', 'London', 'Tokyo')
+    """
     weather_db = {
         "paris": "Sunny, 22°C",
         "london": "Cloudy, 15°C",
@@ -25,50 +34,43 @@ def get_weather(city: str) -> str:
 
 
 def calculate(expression: str) -> str:
-    """Calculate a mathematical expression"""
+    """Safely evaluate a mathematical expression
+
+    Args:
+        expression: Math expression to evaluate (e.g., '2+2', '157.09*493.89')
+    """
     try:
-        # Use eval with restricted builtins for simple math
-        # In production, use a proper math parser like py-expression-eval
-        result = eval(expression, {"__builtins__": {}}, {})
+        result = safe_calculate(expression)
         return str(result)
-    except Exception as e:
+    except ValueError as e:
         return f"Error: {str(e)}"
 
 
-class GetWeatherArgs(BaseModel):
-    city: str = Field(description="City name")
+# Create tools using the simplified Tool class
+# Schemas are automatically generated from function signatures and docstrings!
+weather_tool = Tool(get_weather)
+calculator_tool = Tool(calculate)
 
-
-class CalculateArgs(BaseModel):
-    expression: str = Field(description="Math expression to evaluate")
-
-
+# Convert to OpenAI format
 TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current weather for a city",
-            "parameters": GetWeatherArgs.model_json_schema()
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "calculate",
-            "description": "Evaluate a mathematical expression",
-            "parameters": CalculateArgs.model_json_schema()
-        }
-    }
+    weather_tool.get_schema(),
+    calculator_tool.get_schema()
 ]
+
+# Create a tool registry for easy lookup
+TOOL_REGISTRY = {
+    "get_weather": weather_tool,
+    "calculate": calculator_tool
+}
 
 
 def execute_tool(tool_name: str, arguments: dict) -> str:
     """Execute a tool by name"""
-    if tool_name == "get_weather":
-        return get_weather(**arguments)
-    elif tool_name == "calculate":
-        return calculate(**arguments)
+    tool = TOOL_REGISTRY.get(tool_name)
+    if tool:
+        result = tool.execute(**arguments)
+        # Tool.execute() returns a dict, extract the result
+        return result.get("result", str(result))
     else:
         return f"Unknown tool: {tool_name}"
 
@@ -77,42 +79,38 @@ def agent_loop(user_message: str, max_iterations: int = 5) -> str:
     """
     The core agent loop pattern.
     Keeps calling the LLM and executing tools until we get a final answer.
+
+    Note: Uses Chat Completions API because Responses API doesn't support tool calling yet.
     """
-    input_list = [{"role": "user", "content": user_message}]
+    messages = [{"role": "user", "content": user_message}]
 
     for iteration in range(max_iterations):
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=input_list,
+            messages=messages,
             tools=TOOLS
         )
 
+        message = response.choices[0].message
+
         # If no tool calls, we have a final answer
-        if not response.tool_calls:
-            return response.output_text
+        if not message.tool_calls:
+            return message.content or "No response generated"
 
         # Execute all tool calls
-        print(f"Iteration {iteration + 1}: {len(response.tool_calls)} tool(s) called")
+        print(f"Iteration {iteration + 1}: {len(message.tool_calls)} tool(s) called")
 
         # Add assistant message with tool calls to history
-        input_list.append({
-            "role": "assistant",
-            "content": "",
-            "tool_calls": [
-                {"id": tc.id, "type": "function",
-                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                for tc in response.tool_calls
-            ]
-        })
+        messages.append(message)
 
-        for tool_call in response.tool_calls:
+        for tool_call in message.tool_calls:
             tool_name = tool_call.function.name
             arguments = json.loads(tool_call.function.arguments)
 
             result = execute_tool(tool_name, arguments)
             print(f"  {tool_name}({arguments}) → {result}")
 
-            input_list.append({
+            messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "content": result

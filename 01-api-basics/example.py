@@ -1,7 +1,7 @@
 """
-Lesson 01: OpenAI API Basics with Responses API
+Lesson 01: OpenAI API Basics
 
-Learn how to make your first API call using the new Responses API.
+Learn how to make your first API call to OpenAI.
 """
 
 from openai import OpenAI
@@ -12,26 +12,15 @@ load_dotenv()
 client = OpenAI()
 
 
-class ConversationMemory:
-    """Simple helper to manage conversation history"""
-
-    def __init__(self, instructions: str = None):
-        self.messages = []
-        if instructions:
-            self.messages.append({"role": "system", "content": instructions})
-
-    def add_message(self, role: str, content: str):
-        self.messages.append({"role": role, "content": content})
-
-    def get_history(self):
-        return self.messages
-
-
-## Example 1: Basic API Call
+## Example 1: Your First API Call
 
 
 def basic_response():
-    """Example 1: Basic API call"""
+    """Example 1: Basic API call using Responses API"""
+    print("=" * 60)
+    print("Example 1: Basic API Call")
+    print("=" * 60)
+
     response = client.responses.create(
         model="gpt-4o-mini",
         instructions="You are a helpful Python programming assistant.",
@@ -39,11 +28,20 @@ def basic_response():
         temperature=0.7,
     )
 
-    print(response.output_text)
+    print(f"\n{response.output_text}\n")
+
+
+## Example 2: Streaming Responses
 
 
 def streaming_response():
     """Example 2: Streaming responses for better UX"""
+    print("=" * 60)
+    print("Example 2: Streaming Response")
+    print("=" * 60)
+
+    print("\n", end="")
+
     stream = client.responses.create(
         model="gpt-4o-mini",
         input="Write a short haiku about coding.",
@@ -54,38 +52,53 @@ def streaming_response():
     for event in stream:
         if event.type == "content.delta":
             print(event.delta, end="", flush=True)
+
     print("\n")
 
 
-def stateful_conversation():
-    """Example 3: Multi-turn conversation with history using ConversationMemory"""
-    memory = ConversationMemory()
+## Example 3: Temperature Control
 
-    # First turn
-    memory.add_message("user", "What is 15 * 24?")
-    response1 = client.responses.create(
+
+def temperature_examples():
+    """Example 3: Understanding temperature for creativity control"""
+    print("=" * 60)
+    print("Example 3: Temperature Control")
+    print("=" * 60)
+
+    prompt = "Complete this sentence: The future of AI is"
+
+    # Low temperature (0.0) - Deterministic, focused
+    print("\nTemperature 0.0 (Deterministic):")
+    response_low = client.responses.create(
         model="gpt-4o-mini",
-        input=memory.get_history(),
-        temperature=0,
+        input=prompt,
+        temperature=0.0,
     )
-    memory.add_message("assistant", response1.output_text)
+    print(f"  {response_low.output_text}")
 
-    print("\nUser: What is 15 * 24?")
-    print(f"Assistant: {response1.output_text}")
-
-    # Second turn - memory automatically includes full history
-    memory.add_message("user", "Now multiply that result by 2")
-    response2 = client.responses.create(
+    # Medium temperature (0.7) - Balanced
+    print("\nTemperature 0.7 (Balanced):")
+    response_med = client.responses.create(
         model="gpt-4o-mini",
-        input=memory.get_history(),
-        temperature=0,
+        input=prompt,
+        temperature=0.7,
     )
+    print(f"  {response_med.output_text}")
 
-    print("\nUser: Now multiply that result by 2")
-    print(f"Assistant: {response2.output_text}")
+    # High temperature (1.5) - Creative, varied
+    print("\nTemperature 1.5 (Creative):")
+    response_high = client.responses.create(
+        model="gpt-4o-mini",
+        input=prompt,
+        temperature=1.5,
+    )
+    print(f"  {response_high.output_text}\n")
+
+    print("💡 Lower temperature = more focused and deterministic")
+    print("💡 Higher temperature = more creative and varied\n")
 
 
 if __name__ == "__main__":
     basic_response()
     streaming_response()
-    stateful_conversation()
+    temperature_examples()

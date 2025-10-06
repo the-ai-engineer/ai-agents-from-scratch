@@ -43,7 +43,10 @@ class SendEmailArgs(BaseModel):
 
 
 def basic_pydantic_validation():
-    """Example 1: Pydantic auto-generates schemas and validates"""
+    """Example 1: Pydantic auto-generates schemas and validates
+
+    Note: Uses Chat Completions API because tool calling requires it.
+    """
     tool = {
         "type": "function",
         "function": {
@@ -59,14 +62,16 @@ def basic_pydantic_validation():
     question = "What's the weather in Paris?"
     print(f"\nUser: {question}")
 
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
-        input=question,
+        messages=[{"role": "user", "content": question}],
         tools=[tool]
     )
 
-    if response.tool_calls:
-        tool_call = response.tool_calls[0]
+    message = response.choices[0].message
+
+    if message.tool_calls:
+        tool_call = message.tool_calls[0]
 
         # Validate with Pydantic
         args = GetWeatherArgs.model_validate_json(tool_call.function.arguments)
@@ -76,22 +81,19 @@ def basic_pydantic_validation():
         print(f"Result: {result}")
 
         # Return to LLM
-        input_with_result = [
+        messages_with_result = [
             {"role": "user", "content": question},
-            {"role": "assistant", "content": "", "tool_calls": [
-                {"id": tool_call.id, "type": "function",
-                 "function": {"name": tool_call.function.name, "arguments": tool_call.function.arguments}}
-            ]},
+            message,
             {"role": "tool", "tool_call_id": tool_call.id, "content": result}
         ]
 
-        final_response = client.responses.create(
+        final_response = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=input_with_result,
+            messages=messages_with_result,
             tools=[tool]
         )
 
-        print(f"Assistant: {final_response.output_text}")
+        print(f"Assistant: {final_response.choices[0].message.content}")
 
 
 def tool_wrapper_class():
@@ -149,48 +151,42 @@ def tool_wrapper_class():
     question = "What's the weather in London? If it's cloudy, send an email to john@example.com telling him to bring a jacket."
     print(f"\nUser: {question}")
 
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
-        input=question,
+        messages=[{"role": "user", "content": question}],
         tools=tools_openai
     )
 
-    if response.tool_calls:
-        print(f"{len(response.tool_calls)} tool(s) called")
+    message = response.choices[0].message
 
-        input_list = [{"role": "user", "content": question}]
+    if message.tool_calls:
+        print(f"{len(message.tool_calls)} tool(s) called")
 
-        # Add tool calls to history
-        input_list.append({
-            "role": "assistant",
-            "content": "",
-            "tool_calls": [
-                {"id": tc.id, "type": "function",
-                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                for tc in response.tool_calls
-            ]
-        })
+        messages = [
+            {"role": "user", "content": question},
+            message
+        ]
 
-        for tool_call in response.tool_calls:
+        for tool_call in message.tool_calls:
             tool = next(t for t in tools if t.name == tool_call.function.name)
 
             print(f"Executing: {tool.name}")
             result = tool.execute(tool_call.function.arguments)
             print(f"Result: {result}")
 
-            input_list.append({
+            messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "content": result
             })
 
-        final_response = client.responses.create(
+        final_response = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=input_list,
+            messages=messages,
             tools=tools_openai
         )
 
-        print(f"Assistant: {final_response.output_text}")
+        print(f"Assistant: {final_response.choices[0].message.content}")
 
 
 if __name__ == "__main__":

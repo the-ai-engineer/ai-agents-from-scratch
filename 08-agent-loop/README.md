@@ -1,4 +1,4 @@
-# Lesson 07: Building Your First Autonomous Agent Loop
+# Lesson 08: Building Your First Autonomous Agent Loop
 
 ## What You'll Learn
 
@@ -63,6 +63,10 @@ Here's the core flow:
 
 The key insight: the LLM sees the tool results and can decide what to do next. Need more information? Call another tool. Ready to answer? Return text.
 
+> **"Agents are models using tools in a loop"**
+>
+> This simple definition captures the essence of autonomous agents. Everything else is refinement of this core pattern.
+
 ### Why This Works
 
 The conversation history is critical. After each tool execution, you append:
@@ -70,6 +74,29 @@ The conversation history is critical. After each tool execution, you append:
 2. The tool results
 
 When the LLM sees the history on the next iteration, it understands what it already tried and what information it now has. This enables multi-step reasoning.
+
+### Conceptual Model
+
+Here's elegant pseudocode (credit: Barry Zhan, Anthropic) that captures the agent loop:
+
+```python
+env = Environment()
+tools = Tools(env)
+system_prompt = "Goals, constraints, and how to act"
+
+while True:
+    action = llm.run(system_prompt + env.state)
+    env.state = tools.run(action)
+```
+
+The agent continuously:
+1. **Observes** the current state
+2. **Decides** what action to take (which tool to call)
+3. **Acts** by executing the tool
+4. **Updates** state with results
+5. **Repeats** until task complete
+
+This loop is the foundation of autonomous behavior.
 
 ### Multi-Step Example
 
@@ -115,11 +142,62 @@ sequenceDiagram
 
 The agent automatically coordinated multiple tools to answer completely.
 
+## Why Tools Matter: A Cautionary Tale
+
+Before we dive into implementation, let's see why agents need tools:
+
+**User:** "What is 157.09 * 493.89?"
+
+**LLM without tools:**
+```
+"Let me calculate...
+157.09 × 493.89 = 77,035,208.01"
+```
+❌ **WRONG!** The correct answer is 77,585.1801
+
+**LLM with calculator tool:**
+```
+"I'll use the calculator tool."
+[Calls calculator("157.09 * 493.89")]
+[Result: 77585.1801]
+"The answer is 77,585.1801"
+```
+✅ **CORRECT!**
+
+Even powerful LLMs like GPT-4 can make arithmetic errors. Tools provide precision and access to real-world data that LLMs can't reliably generate from memory.
+
 ## API Note: Tool Calling with Chat Completions
 
 **Important:** This lesson uses the Chat Completions API (`client.chat.completions.create()`) because tool calling requires the `tools` parameter and message-based conversation format. The Responses API does not yet support tool calling in the same way.
 
 When OpenAI adds tool calling support to the Responses API, you'll be able to use the simpler `client.responses.create()` interface. For now, agents with tool calling must use Chat Completions.
+
+## Safety First: Max Iterations
+
+**⚠️ CRITICAL:** Always use `max_iterations`. Never use `while True` in production.
+
+```python
+# ❌ DANGEROUS - Can run forever
+while True:
+    action = llm.decide()
+    env.execute(action)
+
+# ✅ SAFE - Bounded execution
+for iteration in range(max_iterations):
+    action = llm.decide()
+    env.execute(action)
+```
+
+**Why?**
+- **Infinite loops**: LLMs can get stuck in reasoning loops
+- **Cost control**: Each iteration costs API credits
+- **Production stability**: Bounded execution prevents system hangs
+
+**Recommended values:**
+- Start with `max_iterations=10`
+- Simple tasks: 3-5 iterations
+- Complex tasks: 10-15 iterations
+- Research/exploration: 20+ iterations (with monitoring)
 
 ## Code Example: Basic Agent Loop
 
@@ -222,7 +300,7 @@ def execute_tool(name: str, args: dict) -> str:
 This lesson includes a complete working agent:
 
 ```bash
-cd 07-agent-loop
+cd 08-agent-loop
 uv run example.py
 ```
 
@@ -324,6 +402,68 @@ Companies using agent loops report 60-80% reduction in hard-coded workflow logic
 
 The agent loop is the foundation of modern AI automation.
 
+## Testing Your Agent
+
+Always test agents with these three scenarios:
+
+### Test 1: General Question (No Tool Use)
+**Query:** "I have 4 apples. How many do you have?"
+
+**Expected:** Agent responds directly without calling any tools.
+
+**Verifies:** Agent doesn't call tools unnecessarily.
+
+### Test 2: Single Tool Use
+**Query:** "What is 157.09 * 493.89?"
+
+**Expected:**
+- Iteration 1: Calls calculator tool
+- Iteration 2: Returns "77,585.1801"
+
+**Verifies:** Agent recognizes when to use tools and executes correctly.
+
+### Test 3: Multi-Step Reasoning
+**Query:** "If my brother is 32 years younger than my mother and my mother is 30 years older than me and I am 20, how old is my brother?"
+
+**Expected:**
+- Iteration 1: Calculates mother's age (20 + 30 = 50)
+- Iteration 2: Calculates brother's age (50 - 32 = 18)
+- Iteration 3: Returns "Your brother is 18 years old"
+
+**Verifies:** Agent can chain multiple tool calls and maintain reasoning across iterations.
+
+## Building Better Tools
+
+The `tool_helpers.py` module (in the repository root) provides:
+- **Safe calculator** without `eval()`
+- **Automatic schema generation** from Python functions with type hints
+- **BaseTool class** for consistent tool patterns
+
+Example:
+```python
+from tool_helpers import BaseTool, safe_calculate
+
+class CalculatorTool(BaseTool):
+    def execute(self, expression: str) -> dict:
+        '''Performs mathematical calculations
+
+        Args:
+            expression: Math expression to evaluate (e.g., '2+2', '157.09*493.89')
+        '''
+        try:
+            result = safe_calculate(expression)
+            return {"result": result}
+        except ValueError as e:
+            return {"error": str(e)}
+
+# Schema is auto-generated from docstring and type hints!
+tool = CalculatorTool()
+schema = tool.get_schema()  # OpenAI-compatible schema
+result = tool.execute("2 + 2")  # {"result": 4.0}
+```
+
+See `tool_helpers.py` for more examples and the `@as_tool` decorator for simple functions.
+
 ## Assignment
 
 Build an agent that can answer: "Find the current temperature in Tokyo and convert it to Fahrenheit."
@@ -342,7 +482,7 @@ Observe how the agent chains tools without explicit programming of the sequence.
 
 ## Next Steps
 
-Now that you understand the agent loop pattern, move to [Lesson 08 - Agent Class](../08-agent-class) to learn how to abstract this pattern into a clean, reusable class architecture.
+Now that you understand the agent loop pattern, move to [Lesson 09 - Agent Class](../09-agent-class) to learn how to abstract this pattern into a clean, reusable class architecture.
 
 ## Resources
 

@@ -3,7 +3,14 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(python:*)",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(find:*)",
+      "Bash(for:*)",
+      "Bash(do:*)",
+      "Bash(done)",
+      "Bash(if [ -f \"$file/README.md\" ])",
+      "Bash(then grep -n \"Lesson 0\\|Chat Completions\\|chat.completions\" \"$file/README.md\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

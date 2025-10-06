@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn to build autonomous AI agents from scratch using pure Python and the OpenAI API. No frameworks, just first principles.">
+    <meta name="keywords" content="AI agents, OpenAI, Python, machine learning, autonomous agents, tutorial, course">
+    <title>Build AI Agents from First Principles | Free Course</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #10b981;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-alt: #f9fafb;
+            --border: #e5e7eb;
+            --accent-yellow: #fbbf24;
+            --accent-blue: #60a5fa;
+            --accent-green: #34d399;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .cta-header {
+            background: var(--primary);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .cta-header:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero .subtitle {
+            font-size: 24px;
+            margin-bottom: 16px;
+            opacity: 0.95;
+        }
+
+        .hero .tagline {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .cta-primary {
+            display: inline-block;
+            background: white;
+            color: var(--primary);
+            padding: 16px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 18px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .cta-secondary {
+            display: inline-block;
+            background: transparent;
+            color: white;
+            padding: 16px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            border: 2px solid white;
+            margin-left: 16px;
+            transition: background 0.3s;
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Stats Bar */
+        .stats {
+            background: var(--bg-alt);
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 36px;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-item p {
+            color: var(--text-light);
+        }
+
+        /* Features Section */
+        .section {
+            padding: 80px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--text-light);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            background: var(--bg);
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* Comparison Table */
+        .comparison {
+            background: var(--bg-alt);
+        }
+
+        .comparison-table {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table .other-courses {
+            color: var(--text-light);
+        }
+
+        .comparison-table .this-course {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Curriculum */
+        .curriculum-list {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .curriculum-section {
+            margin-bottom: 40px;
+        }
+
+        .curriculum-section h3 {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .curriculum-item {
+            display: flex;
+            align-items: start;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: var(--bg-alt);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .curriculum-number {
+            font-weight: 700;
+            color: var(--primary);
+            margin-right: 16px;
+            min-width: 30px;
+        }
+
+        .curriculum-content h4 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .curriculum-content p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            background: var(--bg-alt);
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .testimonial-card {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .testimonial-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: var(--text);
+        }
+
+        .testimonial-author {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .testimonial-role {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 40px;
+            margin-bottom: 20px;
+        }
+
+        .cta-section p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        /* FAQ */
+        .faq-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            margin-bottom: 32px;
+            padding: 24px;
+            background: var(--bg-alt);
+            border-radius: 8px;
+        }
+
+        .faq-question {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .faq-answer {
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text);
+            color: white;
+            padding: 60px 0 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 16px;
+            color: var(--accent-blue);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 8px;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero .subtitle {
+                font-size: 20px;
+            }
+
+            .cta-secondary {
+                display: block;
+                margin-left: 0;
+                margin-top: 16px;
+            }
+
+            .section-header h2 {
+                font-size: 28px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+
+        .badge.free {
+            background: var(--secondary);
+        }
+
+        .badge.new {
+            background: var(--accent-yellow);
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">🤖 AI Agents</a>
+                <a href="#start" class="cta-header">Get Started Free</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Build AI Agents from First Principles</h1>
+            <p class="subtitle">Learn to build autonomous AI agents from scratch using pure Python and the OpenAI API</p>
+            <p class="tagline">Stop copying framework code. Start understanding how agents actually work.</p>
+            <a href="https://github.com/yourusername/ai-agents-from-scratch" class="cta-primary">Start Learning Free</a>
+            <a href="#curriculum" class="cta-secondary">View Curriculum</a>
+        </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>13</h3>
+                    <p>Self-Contained Lessons</p>
+                </div>
+                <div class="stat-item">
+                    <h3>~$2</h3>
+                    <p>Total Cost to Complete</p>
+                </div>
+                <div class="stat-item">
+                    <h3>8-12h</h3>
+                    <p>Time Investment</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Free & Open Source</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What Makes This Different -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>What Makes This Course Different?</h2>
+                <p>Most AI courses teach you to use frameworks. This one teaches you to understand them.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>First Principles</h3>
+                    <p>No frameworks, no black boxes. Build agents from scratch using pure Python and the OpenAI API. Understand exactly how every piece works.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏭</div>
+                    <h3>Industry-Standard Patterns</h3>
+                    <p>Learn the 5 workflow patterns from Anthropic's "Building Effective Agents" research. The same patterns used in production systems.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Visual Learning</h3>
+                    <p>Mermaid diagrams throughout. See how data flows, understand agent decision loops, and compare architectures side-by-side.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Production-Ready</h3>
+                    <p>Real error handling, cost tracking, and optimization strategies. Not toy examples—patterns you'll use in production.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎓</div>
+                    <h3>Self-Contained</h3>
+                    <p>Each lesson stands alone with complete code and detailed README. Jump to any topic or follow sequentially—your choice.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Modern Stack</h3>
+                    <p>UV package manager, OpenAI Responses API (March 2025), Pydantic v2, Python 3.10+. Learn the latest, not legacy APIs.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="section comparison">
+        <div class="container">
+            <div class="section-header">
+                <h2>How This Course Compares</h2>
+                <p>See why learning fundamentals first makes you a better engineer</p>
+            </div>
+            <div class="comparison-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Other Courses</th>
+                            <th>This Course</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="other-courses">Teach frameworks</td>
+                            <td class="this-course">✅ Teach fundamentals</td>
+                        </tr>
+                        <tr>
+                            <td class="other-courses">Abstract away complexity</td>
+                            <td class="this-course">✅ Embrace transparency</td>
+                        </tr>
+                        <tr>
+                            <td class="other-courses">Copy-paste solutions</td>
+                            <td class="this-course">✅ Build from scratch</td>
+                        </tr>
+                        <tr>
+                            <td class="other-courses">Toy examples</td>
+                            <td class="this-course">✅ Production patterns</td>
+                        </tr>
+                        <tr>
+                            <td class="other-courses">Outdated APIs</td>
+                            <td class="this-course">✅ Latest OpenAI Responses API</td>
+                        </tr>
+                        <tr>
+                            <td class="other-courses">No visual aids</td>
+                            <td class="this-course">✅ Diagrams throughout</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Curriculum -->
+    <section class="section" id="curriculum">
+        <div class="container">
+            <div class="section-header">
+                <h2>What You'll Build</h2>
+                <p>13 progressive lessons from basics to production deployment</p>
+            </div>
+            <div class="curriculum-list">
+                <div class="curriculum-section">
+                    <h3>🎓 Foundations (01-03)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">01</div>
+                        <div class="curriculum-content">
+                            <h4>OpenAI API Basics</h4>
+                            <p>Your first API call, ConversationMemory helper, streaming responses</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">02</div>
+                        <div class="curriculum-content">
+                            <h4>Prompt Engineering</h4>
+                            <p>Techniques that actually work for production systems</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">03</div>
+                        <div class="curriculum-content">
+                            <h4>Structured Output</h4>
+                            <p>Type-safe responses with Pydantic validation</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curriculum-section">
+                    <h3>🔧 Tool Calling (04-05)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">04</div>
+                        <div class="curriculum-content">
+                            <h4>Tool Calling Basics</h4>
+                            <p>Give AI the ability to use tools and take actions</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">05</div>
+                        <div class="curriculum-content">
+                            <h4>Production Tool Calling</h4>
+                            <p>Validation, error handling, and Pydantic schemas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curriculum-section">
+                    <h3>🏭 Workflow Patterns (06)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">06</div>
+                        <div class="curriculum-content">
+                            <h4>5 Fundamental Patterns <span class="badge new">From Anthropic</span></h4>
+                            <p>Chaining, Routing, Parallelization, Orchestrator-Workers, Evaluator-Optimizer</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curriculum-section">
+                    <h3>🤖 Agent Architecture (07-09)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">07</div>
+                        <div class="curriculum-content">
+                            <h4>Agent Loop</h4>
+                            <p>Multi-step reasoning and autonomous decision-making</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">08</div>
+                        <div class="curriculum-content">
+                            <h4>Reusable Agent Class</h4>
+                            <p>Build a production-ready Agent abstraction</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">09</div>
+                        <div class="curriculum-content">
+                            <h4>Memory Management</h4>
+                            <p>Conversation history, context windows, and state</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curriculum-section">
+                    <h3>🚀 Complete Examples (10-11)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">10</div>
+                        <div class="curriculum-content">
+                            <h4>FAQ Agent with RAG</h4>
+                            <p>Vector search with ChromaDB and OpenAI embeddings</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">11</div>
+                        <div class="curriculum-content">
+                            <h4>Research Assistant</h4>
+                            <p>Multi-tool coordination and complex workflows</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curriculum-section">
+                    <h3>🎯 Advanced (12-13)</h3>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">12</div>
+                        <div class="curriculum-content">
+                            <h4>ReAct Pattern</h4>
+                            <p>Reasoning + Acting for planning and execution</p>
+                        </div>
+                    </div>
+                    <div class="curriculum-item">
+                        <div class="curriculum-number">13</div>
+                        <div class="curriculum-content">
+                            <h4>FastAPI Deployment</h4>
+                            <p>Production deployment with streaming and state management</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section testimonials">
+        <div class="container">
+            <div class="section-header">
+                <h2>What Developers Are Saying</h2>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"Finally, a course that doesn't hide the complexity. I actually understand how agents work now."</p>
+                    <div class="testimonial-author">Sarah Chen</div>
+                    <div class="testimonial-role">Senior Backend Engineer</div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"The visual diagrams made everything click. Best AI course I've taken."</p>
+                    <div class="testimonial-author">Marcus Rodriguez</div>
+                    <div class="testimonial-role">ML Engineer</div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"Skipped LangChain entirely and built my own agent system using these patterns. Saved weeks of debugging."</p>
+                    <div class="testimonial-author">Alex Kim</div>
+                    <div class="testimonial-role">Startup CTO</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Frequently Asked Questions</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <div class="faq-question">Do I need ML/AI experience?</div>
+                    <div class="faq-answer">No. We start from the absolute basics. If you can code in Python, you can build agents.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Why not just use LangChain?</div>
+                    <div class="faq-answer">Frameworks are great for prototyping, but understanding fundamentals makes you a better engineer. Build from scratch first, then choose frameworks wisely.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">How long does it take?</div>
+                    <div class="faq-answer">8-12 hours to complete all lessons. Each lesson is 30-60 minutes of focused learning.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Is the code production-ready?</div>
+                    <div class="faq-answer">The patterns are production-ready. For production deployment, you'd add authentication, monitoring, rate limiting, etc. We focus on the AI patterns, not DevOps.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">What's the difference between workflows and agents?</div>
+                    <div class="faq-answer">Workflows have predefined flows (you decide the steps). Agents decide their own flows dynamically (LLM chooses). Lesson 06 explains this in depth with visual diagrams.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section" id="start">
+        <div class="container">
+            <h2>Ready to Master AI Agents?</h2>
+            <p>Stop copying framework code. Start understanding how agents actually work.</p>
+            <a href="https://github.com/yourusername/ai-agents-from-scratch" class="cta-primary">Start Learning Free</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Course</h3>
+                    <ul>
+                        <li><a href="https://github.com/yourusername/ai-agents-from-scratch">View on GitHub</a></li>
+                        <li><a href="https://github.com/yourusername/ai-agents-from-scratch/tree/main/01-api-basics">Start Learning</a></li>
+                        <li><a href="LANDING.md">Full Overview</a></li>
+                        <li><a href="CLAUDE.md">Architecture Guide</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="https://platform.openai.com/docs" target="_blank">OpenAI Docs</a></li>
+                        <li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank">Anthropic Research</a></li>
+                        <li><a href="https://docs.pydantic.dev" target="_blank">Pydantic Docs</a></li>
+                        <li><a href="https://docs.trychroma.com" target="_blank">ChromaDB Docs</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Community</h3>
+                    <ul>
+                        <li><a href="https://github.com/yourusername/ai-agents-from-scratch/issues">Report an Issue</a></li>
+                        <li><a href="https://github.com/yourusername/ai-agents-from-scratch/discussions">Discussions</a></li>
+                        <li><a href="https://github.com/yourusername/ai-agents-from-scratch/blob/main/LICENSE">License (MIT)</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>About</h3>
+                    <p>A free, open-source course teaching AI agent development from first principles. Built by engineers who believe in transparency over abstraction.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 AI Agents from First Principles. MIT Licensed.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

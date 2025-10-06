@@ -28,6 +28,17 @@ When you understand first principles, you can:
 
 Frameworks hide complexity. We embrace transparency.
 
+## 🧠 The Core Insight
+
+> **"Agents are models using tools in a loop."**
+
+This memorable definition (from Anthropic research) captures everything:
+- **Models**: LLMs provide reasoning and decision-making
+- **Tools**: Functions that interact with the real world
+- **Loop**: Continuous observe → decide → act → update cycle
+
+Everything else—memory, planning, multi-agent systems—is refinement of this core pattern.
+
 ## 🎯 What You'll Learn
 
 ### Foundations
@@ -59,28 +70,29 @@ Frameworks hide complexity. We embrace transparency.
 
 ### Foundations
 1. **[01-api-basics](./01-api-basics)** - Your first API call to OpenAI
-2. **[02-prompting](./02-prompting)** - Prompt engineering essentials
-3. **[03-structured-output](./03-structured-output)** - Type-safe responses with Pydantic
+2. **[02-conversation-memory](./02-conversation-memory)** - Maintaining context across turns
+3. **[03-prompting](./03-prompting)** - Prompt engineering essentials
+4. **[04-structured-output](./04-structured-output)** - Type-safe responses with Pydantic
 
 ### Tool Calling
-4. **[04-tool-calling-basics](./04-tool-calling-basics)** - Give AI the ability to use tools
-5. **[05-tool-calling-pydantic](./05-tool-calling-pydantic)** - Production tool calling with validation
+5. **[05-tool-calling-basics](./05-tool-calling-basics)** - Give AI the ability to use tools
+6. **[06-tool-calling-pydantic](./06-tool-calling-pydantic)** - Production tool calling with validation
 
 ### Workflow Patterns
-6. **[06-workflow-patterns](./06-workflow-patterns)** - 5 fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) 📊
+7. **[07-workflow-patterns](./07-workflow-patterns)** - 5 fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) 📊
 
 ### Building Agents
-7. **[07-agent-loop](./07-agent-loop)** - Multi-step reasoning and tool chaining
-8. **[08-agent-class](./08-agent-class)** - Reusable Agent abstraction
-9. **[09-memory](./09-memory)** - Conversation history and state management
+8. **[08-agent-loop](./08-agent-loop)** - Multi-step reasoning and tool chaining
+9. **[09-agent-class](./09-agent-class)** - Reusable Agent abstraction
+10. **[10-advanced-memory](./10-advanced-memory)** - Token limits, trimming, and persistence
 
 ### Complete Examples
-10. **[10-example-faq-agent](./10-example-faq-agent)** - FAQ agent with RAG (vector search)
-11. **[11-example-research-assistant](./11-example-research-assistant)** - Multi-tool research agent
+11. **[11-example-faq-agent](./11-example-faq-agent)** - FAQ agent with RAG (vector search)
+12. **[12-example-research-assistant](./12-example-research-assistant)** - Multi-tool research agent
 
 ### Advanced Patterns
-12. **[12-planning-react](./12-planning-react)** - ReAct pattern (Reasoning + Acting)
-13. **[13-fastapi-deployment](./13-fastapi-deployment)** - Deploy your agent with FastAPI
+13. **[13-planning-react](./13-planning-react)** - ReAct pattern (Reasoning + Acting)
+14. **[14-fastapi-deployment](./14-fastapi-deployment)** - Deploy your agent with FastAPI
 
 ## 🚀 Getting Started
 
@@ -144,31 +156,31 @@ Each lesson has its own isolated environment, so you can work through them indep
 Start at lesson 01 and work through each lesson in order.
 
 ### If you know the basics:
-- Skip to lesson 04 for tool calling
-- Jump to lesson 06 for workflow patterns
-- Jump to lesson 08 for agent architecture
-- Go to lesson 10 for complete examples
+- Skip to lesson 05 for tool calling
+- Jump to lesson 07 for workflow patterns
+- Jump to lesson 09 for agent architecture
+- Go to lesson 11 for complete examples
 
 ### If you want to see working agents:
-Check out lessons 10 and 11 for complete, production-ready examples.
+Check out lessons 11 and 12 for complete, production-ready examples.
 
 ## 🎓 Key Concepts
 
 ### Workflows vs Agents: The Critical Distinction
 
-**Workflows (Lesson 06):**
+**Workflows (Lesson 07):**
 - **YOU** define the execution flow
 - Deterministic paths (outline → draft → polish)
 - Use `WorkflowState` dataclass for intermediate results
 - Like assembly lines with fixed stations
 
-**Agents (Lessons 07+):**
+**Agents (Lessons 08+):**
 - **LLM** decides the execution flow dynamically
 - Non-deterministic reasoning (agent chooses tools)
 - Use `ConversationMemory` for conversational context
 - Like consultants who decide their approach
 
-📊 **[See visual comparison diagram →](./06-workflow-patterns/README.md)**
+📊 **[See visual comparison diagram →](./07-workflow-patterns/README.md)**
 
 ### Production-Ready from Day 1
 Every example includes:
@@ -182,16 +194,18 @@ Every example includes:
 
 | Pattern | Use Case | Example | Lesson |
 |---------|----------|---------|--------|
-| **Simple Prompting** | One-off tasks, no external data | Code review, summarization | 01-02 |
-| **Structured Output** | Extract data, need type safety | Parse emails, extract entities | 03 |
-| **Tool Calling** | Need to take actions, call APIs | Weather bot, calculator | 04-05 |
-| **Prompt Chaining** | Sequential transformations | Content pipeline (outline → draft → polish) | 06 |
-| **Routing** | Different queries need different handling | Customer support triage | 06 |
-| **Parallelization** | Independent concurrent tasks | Bulk email classification | 06 |
-| **Orchestrator-Workers** | Complex tasks needing decomposition | Research assistant breaking down topics | 06 |
-| **Evaluator-Optimizer** | Quality control & iterative refinement | Code generation with review | 06 |
-| **Agent Loop** | Multi-step reasoning, tool chaining | Autonomous research, booking agent | 07-08 |
-| **RAG** | Need to search knowledge base | FAQ bot, documentation assistant | 10 |
+| **Simple Prompting** | One-off tasks, no external data | Code review, summarization | 01-03 |
+| **Conversation Memory** | Multi-turn dialogue | Chatbots, assistants | 02 |
+| **Structured Output** | Extract data, need type safety | Parse emails, extract entities | 04 |
+| **Tool Calling** | Need to take actions, call APIs | Weather bot, calculator | 05-06 |
+| **Prompt Chaining** | Sequential transformations | Content pipeline (outline → draft → polish) | 07 |
+| **Routing** | Different queries need different handling | Customer support triage | 07 |
+| **Parallelization** | Independent concurrent tasks | Bulk email classification | 07 |
+| **Orchestrator-Workers** | Complex tasks needing decomposition | Research assistant breaking down topics | 07 |
+| **Evaluator-Optimizer** | Quality control & iterative refinement | Code generation with review | 07 |
+| **Agent Loop** | Multi-step reasoning, tool chaining | Autonomous research, booking agent | 08-09 |
+| **Advanced Memory** | Token limits, persistence | Long conversations, production apps | 10 |
+| **RAG** | Need to search knowledge base | FAQ bot, documentation assistant | 11 |
 
 ## 📖 Course Philosophy
 

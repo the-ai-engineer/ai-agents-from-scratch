@@ -8,14 +8,14 @@ This is a tutorial repository teaching AI agent development from scratch using P
 
 ## Project Structure
 
-The repository follows a progressive learning path with 13 lessons organized by complexity:
+The repository follows a progressive learning path with 14 lessons organized by complexity:
 
-**Foundations (01-03):** Basic OpenAI API usage, prompting techniques, and structured output with Pydantic
-**Tool Calling (04-05):** Implementing function calling, both basic and with Pydantic validation
-**Workflow Patterns (06):** Orchestrating multiple LLM calls with five fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer)
-**Agent Architecture (07-09):** Building agent loops, creating reusable Agent classes, and managing conversation memory
-**Complete Examples (10-11):** Production-ready agents including FAQ bot with RAG (ChromaDB) and research assistant
-**Advanced (12-13):** ReAct pattern for planning/reasoning and FastAPI deployment
+**Foundations (01-04):** Basic OpenAI API usage, conversation memory, prompting techniques, and structured output with Pydantic
+**Tool Calling (05-06):** Implementing function calling, both basic and with Pydantic validation
+**Workflow Patterns (07):** Orchestrating multiple LLM calls with five fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer)
+**Agent Architecture (08-10):** Building agent loops, creating reusable Agent classes, and advanced memory management (token limits, trimming, persistence)
+**Complete Examples (11-12):** Production-ready agents including FAQ bot with RAG (ChromaDB) and research assistant
+**Advanced (13-14):** ReAct pattern for planning/reasoning and FastAPI deployment
 
 ### Key Architectural Components
 
@@ -43,14 +43,19 @@ flowchart LR
     style A6 fill:#ffe0b2
 ```
 
-**Workflow Patterns (06-workflow-patterns):** Five fundamental patterns for orchestrating multiple LLM calls:
+**ConversationMemory (02-conversation-memory):** Simple helper class for managing dialogue history across turns. Key methods:
+- `add_message(role, content)`: Add user/assistant messages
+- `get_history()`: Get full conversation history
+- `clear()`: Reset conversation while keeping system instructions
+
+**Workflow Patterns (07-workflow-patterns):** Five fundamental patterns for orchestrating multiple LLM calls:
 - **Prompt Chaining:** Sequential workflows where each step feeds into the next (e.g., outline → draft → polish). Uses `WorkflowState` dataclass to track intermediate results.
 - **Routing:** Conditional branching to specialized prompts based on classification (e.g., customer support triage)
 - **Parallelization:** Concurrent LLM calls using async/await for speed (e.g., bulk processing, multi-perspective analysis)
 - **Orchestrator-Workers:** Central LLM dynamically decomposes tasks and delegates to worker LLMs in parallel, then synthesizes results (e.g., research assistant breaking down topics)
 - **Evaluator-Optimizer:** Generate-evaluate-refine loops for quality control (e.g., code generation → review → improvement)
 
-**Agent Class Pattern (08-agent-class/example.py):** The core reusable abstraction used across lessons 8-13. Key features:
+**Agent Class Pattern (09-agent-class/example.py):** The core reusable abstraction used across lessons 9-14. Key features:
 - `register_tool()`: Add tools with Pydantic schemas for validation
 - `chat()`: Main interface handling the agent loop internally
 - `conversation_history`: List of message dicts maintaining context
@@ -59,9 +64,11 @@ flowchart LR
 
 **Tool Calling Flow:** User message → LLM decides tools to call → Execute tools → Add results to history → LLM synthesizes final answer. This loop continues until LLM returns a final answer (no tool_calls) or max_iterations reached.
 
-**RAG Pattern (10-example-faq-agent):** Uses ChromaDB for vector storage with OpenAI embeddings. Knowledge base is populated at startup, then queries use semantic search to retrieve relevant context before answering.
+**Advanced Memory (10-advanced-memory):** Production memory management including token counting with tiktoken, context window limits, sliding window strategy for trimming history, and conversation persistence (save/load).
 
-**FastAPI Deployment (13-fastapi-deployment):** Stateful conversation management with in-memory sessions (production should use Redis/database). Supports both standard and streaming responses.
+**RAG Pattern (11-example-faq-agent):** Uses ChromaDB for vector storage with OpenAI embeddings. Knowledge base is populated at startup, then queries use semantic search to retrieve relevant context before answering.
+
+**FastAPI Deployment (14-fastapi-deployment):** Stateful conversation management with in-memory sessions (production should use Redis/database). Supports both standard and streaming responses.
 
 ## Development Commands
 
@@ -78,11 +85,11 @@ uv sync
 
 # Run any lesson from anywhere
 uv run 01-api-basics/example.py
-cd 05-tool-calling-pydantic
+cd 06-tool-calling-pydantic
 uv run example.py
 
-# Run FastAPI server (lesson 13)
-cd 13-fastapi-deployment
+# Run FastAPI server (lesson 14)
+cd 14-fastapi-deployment
 uv run uvicorn server:app --reload --port 8000
 
 # Optional: Install dev tools
@@ -108,8 +115,8 @@ uv add --dev pytest black ruff
 - System prompts are optional but included in conversation_history when provided
 - Tool results are added with role="tool" and tool_call_id for correlation
 - Examples use eval() for simplicity but production code should use json.loads()
-- Workflow patterns (lesson 06) use AsyncOpenAI for parallel execution with asyncio.gather()
-- **Key distinction: Workflows (lesson 06) have predefined flows (YOU decide); Agents (lessons 07+) decide flows dynamically (LLM decides)**
+- Workflow patterns (lesson 07) use AsyncOpenAI for parallel execution with asyncio.gather()
+- **Key distinction: Workflows (lesson 07) have predefined flows (YOU decide); Agents (lessons 08+) decide flows dynamically (LLM decides)**
 
 ## Environment Requirements
 

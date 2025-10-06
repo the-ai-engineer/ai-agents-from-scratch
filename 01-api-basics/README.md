@@ -93,36 +93,6 @@ OPENAI_API_KEY=your-key-here
 
 Never hardcode API keys directly in your code. Always use environment variables.
 
-## ConversationMemory: Managing Multi-Turn Conversations
-
-Our example code includes a `ConversationMemory` helper class to manage conversation history. This makes multi-turn conversations easier and less error-prone:
-
-```mermaid
-graph TD
-    A[🎯 ConversationMemory] --> B[Add messages]
-    B --> C{Message Role}
-    C -->|user| D[📝 User Message]
-    C -->|assistant| E[🤖 Assistant Response]
-    C -->|system| F[⚙️ System Instructions]
-
-    D --> G[📚 History Array]
-    E --> G
-    F --> G
-
-    G --> H[🔄 Pass to API]
-    H --> I[🎯 Maintains Context]
-
-    style A fill:#fff9c4
-    style G fill:#e1f5ff
-    style I fill:#c8e6c9
-```
-
-**Why use ConversationMemory?**
-- Less error-prone than manual history management
-- Clean API: `memory.add_message(role, content)`
-- Maintains proper message structure
-- Foundation for more advanced patterns in later lessons
-
 ## Your First API Call
 
 Here's a minimal working example using the Responses API:
@@ -312,7 +282,7 @@ Then modify the `instructions` parameter to change the AI's personality (e.g., "
 
 ## Next Steps
 
-Once you're comfortable with basic API calls, move to [Lesson 02 - Prompting](../02-prompting) to learn how to write effective prompts that get reliable results.
+Once you're comfortable with basic API calls, move to [Lesson 02 - Conversation Memory](../02-conversation-memory) to learn how to maintain context across multiple turns in a conversation.
 
 ## Resources
 
