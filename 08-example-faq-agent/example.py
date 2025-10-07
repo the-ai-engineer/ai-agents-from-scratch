@@ -1,88 +1,21 @@
 """
-Lesson 10: Complete FAQ Agent with RAG
+Lesson 08: Complete FAQ Agent with RAG
 
 A production-ready FAQ agent that uses vector search to answer questions
 from a knowledge base.
 """
 
 import os
-import json
-from typing import Callable
-from openai import OpenAI
-from pydantic import BaseModel, Field
+import sys
 import chromadb
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
 
+# Add parent directory to path to import agents framework
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from agents import Agent, tool
+
 load_dotenv()
-
-
-class Agent:
-    """Reusable agent with tool calling support"""
-
-    def __init__(self, model: str = "gpt-4o-mini", max_iterations: int = 5, instructions: str = None):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = model
-        self.max_iterations = max_iterations
-        self.tools = {}
-        self.tool_schemas = []
-        self.conversation_history = []
-        self.instructions = instructions or "You are a helpful assistant."
-
-    def register_tool(self, name: str, function: Callable, args_schema: type[BaseModel], description: str):
-        """Register a tool"""
-        self.tools[name] = function
-        self.tool_schemas.append({
-            "type": "function",
-            "function": {
-                "name": name,
-                "description": description,
-                "parameters": args_schema.model_json_schema()
-            }
-        })
-
-    def chat(self, message: str) -> str:
-        """Send a message and get a response
-
-        Note: Uses Chat Completions API because tool calling requires it.
-        """
-        # Add system message if this is the first message
-        if not self.conversation_history and self.instructions:
-            self.conversation_history.append({"role": "system", "content": self.instructions})
-
-        self.conversation_history.append({"role": "user", "content": message})
-
-        for iteration in range(self.max_iterations):
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=self.conversation_history,
-                tools=self.tool_schemas if self.tool_schemas else None
-            )
-
-            message_obj = response.choices[0].message
-
-            if not message_obj.tool_calls:
-                answer = message_obj.content or "No response generated"
-                self.conversation_history.append({"role": "assistant", "content": answer})
-                return answer
-
-            # Handle tool calls
-            self.conversation_history.append(message_obj)
-
-            for tool_call in message_obj.tool_calls:
-                if tool_call.function.name in self.tools:
-                    args = json.loads(tool_call.function.arguments)
-                    result = str(self.tools[tool_call.function.name](**args))
-                else:
-                    result = f"Tool not found: {tool_call.function.name}"
-
-                self.conversation_history.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result
-                })
-
-        return "Max iterations reached"
 
 
 class FAQDatabase:
@@ -127,14 +60,20 @@ class FAQDatabase:
         return faqs
 
 
-class SearchFAQArgs(BaseModel):
-    query: str = Field(description="Search query or question")
-    top_k: int = Field(default=3, ge=1, le=5, description="Number of results")
+# Global FAQ database instance
+faq_db = None
 
 
-def create_search_tool(faq_db: FAQDatabase):
-    """Create a search function for the agent"""
+def create_search_faq_tool():
+    """Factory function to create the search_faq tool with access to the database"""
+    @tool
     def search_faq(query: str, top_k: int = 3) -> str:
+        """Search the FAQ database for relevant information
+
+        Args:
+            query: Search query or question to find relevant FAQs
+            top_k: Number of results to return (1-5, default: 3)
+        """
         results = faq_db.search(query, top_k)
 
         if not results:
@@ -151,6 +90,8 @@ def create_search_tool(faq_db: FAQDatabase):
 
 def main():
     """Demo the FAQ agent"""
+    global faq_db
+
     print("Creating FAQ Database...")
     faq_db = FAQDatabase(collection_name="company_faqs")
 
@@ -181,20 +122,20 @@ def main():
     faq_db.add_faqs_bulk(sample_faqs)
     print(f"Added {len(sample_faqs)} FAQs\n")
 
-    # Create agent
-    instructions = """You are a helpful customer support agent.
+    # Create search tool with access to database
+    search_faq = create_search_faq_tool()
+
+    # Create agent with tools
+    system_prompt = """You are a helpful customer support agent.
 Search the FAQ database to answer questions.
 Provide clear answers based on the FAQs.
 If no relevant FAQ exists, say so politely."""
 
-    agent = Agent(model="gpt-4o-mini", max_iterations=5, instructions=instructions)
-
-    search_tool = create_search_tool(faq_db)
-    agent.register_tool(
-        name="search_faq",
-        function=search_tool,
-        args_schema=SearchFAQArgs,
-        description="Search the FAQ database"
+    agent = Agent(
+        model="gpt-4o-mini",
+        max_iterations=5,
+        system_prompt=system_prompt,
+        tools=[search_faq]
     )
 
     print("Agent created\n")

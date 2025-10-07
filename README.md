@@ -44,8 +44,8 @@ Everything else—memory, planning, multi-agent systems—is refinement of this 
 ### Foundations
 - **OpenAI Responses API** (the modern way to call LLMs)
 - **ConversationMemory** helper for managing context
-- **Prompt engineering** techniques that actually work
 - **Structured outputs** with Pydantic for type-safe responses
+- **Tool calling** with the @tool decorator pattern
 
 ### The 5 Workflow Patterns (from Anthropic)
 1. **Prompt Chaining** - Sequential pipelines with `WorkflowState`
@@ -68,31 +68,24 @@ Everything else—memory, planning, multi-agent systems—is refinement of this 
 
 ## 📚 Course Structure
 
-### Foundations
+### Foundations (1-4)
 1. **[01-api-basics](./01-api-basics)** - Your first API call to OpenAI
 2. **[02-conversation-memory](./02-conversation-memory)** - Maintaining context across turns
-3. **[03-prompting](./03-prompting)** - Prompt engineering essentials
-4. **[04-structured-output](./04-structured-output)** - Type-safe responses with Pydantic
+3. **[03-structured-output](./03-structured-output)** - Type-safe responses with Pydantic
+4. **[04-tool-calling](./04-tool-calling)** - Give AI the ability to use tools (basic.py and advanced.py)
 
-### Tool Calling
-5. **[05-tool-calling-basics](./05-tool-calling-basics)** - Give AI the ability to use tools
-6. **[06-tool-calling-pydantic](./06-tool-calling-pydantic)** - Production tool calling with validation
+### Workflows & Agents (5-6)
+5. **[05-workflow-patterns](./05-workflow-patterns)** - 5 fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) 📊
+6. **[06-agent-architecture](./06-agent-architecture)** - Agent loop & reusable Agent class (loop.py and class.py)
 
-### Workflow Patterns
-7. **[07-workflow-patterns](./07-workflow-patterns)** - 5 fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) 📊
+### Advanced (7-8)
+7. **[07-advanced-memory](./07-advanced-memory)** - Token limits, trimming, Redis persistence, and managed alternatives (mem0)
+8. **[08-example-faq-agent](./08-example-faq-agent)** - FAQ agent with RAG (vector search)
 
-### Building Agents
-8. **[08-agent-loop](./08-agent-loop)** - Multi-step reasoning and tool chaining
-9. **[09-agent-class](./09-agent-class)** - Reusable Agent abstraction
-10. **[10-advanced-memory](./10-advanced-memory)** - Token limits, trimming, and persistence
-
-### Complete Examples
-11. **[11-example-faq-agent](./11-example-faq-agent)** - FAQ agent with RAG (vector search)
-12. **[12-example-research-assistant](./12-example-research-assistant)** - Multi-tool research agent
-
-### Advanced Patterns
-13. **[13-planning-react](./13-planning-react)** - ReAct pattern (Reasoning + Acting)
-14. **[14-fastapi-deployment](./14-fastapi-deployment)** - Deploy your agent with FastAPI
+### Complete Examples (9-11)
+9. **[09-example-research-assistant](./09-example-research-assistant)** - Multi-tool research agent
+10. **[10-planning-react](./10-planning-react)** - ReAct pattern (Reasoning + Acting)
+11. **[11-fastapi-deployment](./11-fastapi-deployment)** - Deploy your agent with FastAPI
 
 ## 🚀 Getting Started
 
@@ -156,31 +149,31 @@ Each lesson has its own isolated environment, so you can work through them indep
 Start at lesson 01 and work through each lesson in order.
 
 ### If you know the basics:
-- Skip to lesson 05 for tool calling
-- Jump to lesson 07 for workflow patterns
-- Jump to lesson 09 for agent architecture
-- Go to lesson 11 for complete examples
+- Skip to lesson 04 for tool calling
+- Jump to lesson 05 for workflow patterns
+- Jump to lesson 06 for agent architecture
+- Go to lesson 08 for complete examples
 
 ### If you want to see working agents:
-Check out lessons 11 and 12 for complete, production-ready examples.
+Check out lessons 08-11 for complete, production-ready examples.
 
 ## 🎓 Key Concepts
 
 ### Workflows vs Agents: The Critical Distinction
 
-**Workflows (Lesson 07):**
+**Workflows (Lesson 05):**
 - **YOU** define the execution flow
 - Deterministic paths (outline → draft → polish)
 - Use `WorkflowState` dataclass for intermediate results
 - Like assembly lines with fixed stations
 
-**Agents (Lessons 08+):**
+**Agents (Lesson 06+):**
 - **LLM** decides the execution flow dynamically
 - Non-deterministic reasoning (agent chooses tools)
 - Use `ConversationMemory` for conversational context
 - Like consultants who decide their approach
 
-📊 **[See visual comparison diagram →](./07-workflow-patterns/README.md)**
+📊 **[See visual comparison diagram →](./05-workflow-patterns/README.md)**
 
 ### Production-Ready from Day 1
 Every example includes:
@@ -194,18 +187,18 @@ Every example includes:
 
 | Pattern | Use Case | Example | Lesson |
 |---------|----------|---------|--------|
-| **Simple Prompting** | One-off tasks, no external data | Code review, summarization | 01-03 |
+| **Simple Prompting** | One-off tasks, no external data | Code review, summarization | 01 |
 | **Conversation Memory** | Multi-turn dialogue | Chatbots, assistants | 02 |
-| **Structured Output** | Extract data, need type safety | Parse emails, extract entities | 04 |
-| **Tool Calling** | Need to take actions, call APIs | Weather bot, calculator | 05-06 |
-| **Prompt Chaining** | Sequential transformations | Content pipeline (outline → draft → polish) | 07 |
-| **Routing** | Different queries need different handling | Customer support triage | 07 |
-| **Parallelization** | Independent concurrent tasks | Bulk email classification | 07 |
-| **Orchestrator-Workers** | Complex tasks needing decomposition | Research assistant breaking down topics | 07 |
-| **Evaluator-Optimizer** | Quality control & iterative refinement | Code generation with review | 07 |
-| **Agent Loop** | Multi-step reasoning, tool chaining | Autonomous research, booking agent | 08-09 |
-| **Advanced Memory** | Token limits, persistence | Long conversations, production apps | 10 |
-| **RAG** | Need to search knowledge base | FAQ bot, documentation assistant | 11 |
+| **Structured Output** | Extract data, need type safety | Parse emails, extract entities | 03 |
+| **Tool Calling** | Need to take actions, call APIs | Weather bot, calculator | 04 |
+| **Prompt Chaining** | Sequential transformations | Content pipeline (outline → draft → polish) | 05 |
+| **Routing** | Different queries need different handling | Customer support triage | 05 |
+| **Parallelization** | Independent concurrent tasks | Bulk email classification | 05 |
+| **Orchestrator-Workers** | Complex tasks needing decomposition | Research assistant breaking down topics | 05 |
+| **Evaluator-Optimizer** | Quality control & iterative refinement | Code generation with review | 05 |
+| **Agent Architecture** | Multi-step reasoning, tool chaining | Autonomous research, booking agent | 06 |
+| **Advanced Memory** | Token limits, Redis persistence, managed services | Long conversations, production apps | 07 |
+| **RAG** | Need to search knowledge base | FAQ bot, documentation assistant | 08 |
 
 ## 📖 Course Philosophy
 
@@ -217,8 +210,8 @@ Every example includes:
 6. **Self-Contained**: Jump to any lesson or follow sequentially
 7. **Framework-Agnostic**: Once you know fundamentals, use any framework
 
-**Cost to complete:** ~$2 in OpenAI credits (using `gpt-4o-mini`)
-**Time investment:** 8-12 hours total
+**Cost to complete:** ~$1-2 in OpenAI credits (using `gpt-4o-mini`)
+**Time investment:** 6-10 hours total
 **Value:** Understanding that will serve your entire AI career
 
 ## 🛠️ Tech Stack
@@ -260,6 +253,33 @@ By the end of this course, you'll have built:
 - ✅ Skills to build any AI agent from scratch
 - ✅ Confidence to debug and optimize agents
 
+## 🎁 Bonus: Your Own Agent Framework
+
+By completing this course, you'll build **`agents.py`** - a lightweight framework containing the patterns you learned:
+
+```python
+from agents import Agent, Tool, ConversationMemory
+
+# Define your tools
+tool = Tool(your_function)  # Auto-generates schema!
+
+# Create agent
+agent = Agent(instructions="You are a helpful assistant")
+agent.register_tool(tool)
+
+# Use it
+response = agent.chat("Your question here")
+```
+
+**What's included:**
+- ✅ `Agent` - Reusable agent with tool calling loop
+- ✅ `Tool` - Automatic OpenAI schema generation
+- ✅ `ConversationMemory` - Multi-turn dialogue management
+
+Unlike LangChain (100K+ lines), this is ~400 lines of code **you understand completely** because you built it.
+
+**[📖 Read the framework guide →](./AGENTS_FRAMEWORK.md)**
+
 ## 🤝 Contributing
 
 Found an issue or want to improve an example? PRs welcome!
@@ -272,6 +292,7 @@ MIT License - feel free to use this code for learning and in your own projects.
 
 **Course Materials:**
 - [📖 Full Landing Page](./LANDING.md) - Complete course overview
+- [🎁 Agents Framework Guide](./AGENTS_FRAMEWORK.md) - Your lightweight framework built from the course
 - [📣 Promotional Materials](./PROMO.md) - Social media posts, email templates, etc.
 - [🤖 CLAUDE.md](./CLAUDE.md) - Architecture guide for AI assistants
 

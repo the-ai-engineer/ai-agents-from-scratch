@@ -1,14 +1,28 @@
 """
-Lesson 12: Planning with ReAct
+Lesson 10: Planning with ReAct
 
 Learn the ReAct (Reasoning + Acting) pattern - agents that think before they act.
+
+This lesson uses the agents.py framework but adds a unique twist: structured output
+for explicit reasoning. While the base Agent class handles tool calling automatically,
+ReAct forces the LLM to articulate its thinking at each step using Pydantic models.
+
+Key differences from base Agent:
+- Base Agent: LLM decides tools to call implicitly
+- ReAct Agent: LLM must provide explicit "thought" before each action
+- Base Agent: Good for straightforward tasks
+- ReAct Agent: Better for complex multi-step reasoning where you want visibility
 """
 
-import os
-import json
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import agents module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from typing import Literal
-from openai import OpenAI
 from pydantic import BaseModel, Field
+from agents import Agent, tool, ConversationMemory
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,9 +40,14 @@ class ReActStep(BaseModel):
     )
 
 
-# Tools
+# Tools decorated with @tool
+@tool
 def get_weather(city: str) -> str:
-    """Get weather for a city"""
+    """Get weather for a city
+
+    Args:
+        city: City name (e.g., 'Paris', 'London', 'Tokyo')
+    """
     weather_db = {
         "paris": "Sunny, 22°C",
         "london": "Cloudy, 15°C",
@@ -37,8 +56,13 @@ def get_weather(city: str) -> str:
     return weather_db.get(city.lower(), f"Weather data not available for {city}")
 
 
+@tool
 def calculate(expression: str) -> str:
-    """Calculate a mathematical expression"""
+    """Calculate a mathematical expression
+
+    Args:
+        expression: Math expression to evaluate (e.g., '2+2', '15*24')
+    """
     try:
         # Use eval with restricted builtins for simple math
         # In production, use a proper math parser like py-expression-eval
@@ -49,15 +73,18 @@ def calculate(expression: str) -> str:
 
 
 class ReActAgent:
-    """Agent that uses ReAct pattern: Think → Act → Observe → Repeat"""
+    """Agent that uses ReAct pattern: Think → Act → Observe → Repeat
+
+    This extends the base Agent class with explicit reasoning steps using
+    structured output to force the LLM to think before acting.
+    """
 
     def __init__(self, model: str = "gpt-4o-mini", max_iterations: int = 10):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = model
-        self.max_iterations = max_iterations
-        self.tools = {"get_weather": get_weather, "calculate": calculate}
-
-        self.instructions = """You are a ReAct agent that solves problems by reasoning and acting.
+        # Use the Agent framework with tools
+        self.agent = Agent(
+            model=model,
+            max_iterations=max_iterations,
+            system_prompt="""You are a ReAct agent that solves problems by reasoning and acting.
 
 For each step:
 1. THINK: Reason about what to do next
@@ -68,44 +95,53 @@ Available tools:
 - get_weather(city: str) - Get weather
 - calculate(expression: str) - Math calculations
 
-Break complex tasks into simple steps. When you have enough info, use FINISH."""
+Break complex tasks into simple steps. When you have enough info, use FINISH.""",
+            tools=[get_weather, calculate]
+        )
+
+        # For structured output we need direct client access
+        from openai import OpenAI
+        self.client = OpenAI()
+        self.model = model
+        self.max_iterations = max_iterations
+        self.tools = {"get_weather": get_weather, "calculate": calculate}
 
     def run(self, user_query: str) -> str:
-        """Run the ReAct agent"""
+        """Run the ReAct agent with explicit reasoning steps"""
         print(f"\nQuery: {user_query}\n")
-        conversation = [{"role": "user", "content": user_query}]
+
+        # Build messages list with system prompt
+        system_prompt = self.agent.memory.get_items()[0]["content"]
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_query}
+        ]
 
         for iteration in range(self.max_iterations):
             print(f"Step {iteration + 1}:")
 
-            # Agent thinks and decides what to do
-            response = self.client.beta.responses.parse(
+            # Agent thinks and decides what to do using structured output
+            response = self.client.beta.chat.completions.parse(
                 model=self.model,
-                instructions=self.instructions,
-                input=conversation,
+                messages=messages,
                 response_format=ReActStep
             )
 
-            step = response.parsed
+            step = response.choices[0].message.parsed
 
             print(f"  Thought: {step.thought}")
             print(f"  Action: {step.action}")
 
             if step.action == "FINISH":
                 # Get final answer
-                conversation.append({
+                messages.append({
                     "role": "assistant",
                     "content": f"Thought: {step.thought}\nAction: FINISH"
                 })
-                conversation.append({
+                messages.append({
                     "role": "user",
                     "content": "Provide your final answer."
                 })
-
-                # Add system message at the beginning if not present
-                messages = conversation
-                if not any(msg.get("role") == "system" for msg in messages):
-                    messages = [{"role": "system", "content": self.instructions}] + messages
 
                 final_response = self.client.chat.completions.create(
                     model=self.model,

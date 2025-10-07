@@ -4,37 +4,26 @@ Inspired by Leonie Monigatti's "Building an AI Agent from Scratch in Python" tut
 
 ## What Was Added
 
-### 1. **New Tool Helpers Module** (`tool_helpers.py`)
+### 1. **New Agents Framework** (`agents.py`)
 
-#### Safe Calculator (No `eval()`)
+#### Automatic Schema Generation from Functions
 ```python
-from tool_helpers import safe_calculate
+from agents import Tool
 
-# Safe mathematical evaluation
-result = safe_calculate("157.09 * 493.89")  # 77585.1801
-```
+def calculate(expression: str) -> str:
+    """Evaluate a mathematical expression
 
-**Why it matters:**
-- Secure: No arbitrary code execution
-- Reliable: Proper operator precedence
-- Production-ready: Error handling included
+    Args:
+        expression: Math expression to evaluate (e.g., '2+2', '157.09*493.89')
+    """
+    try:
+        result = eval(expression, {"__builtins__": {}}, {})
+        return str(result)
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-#### Automatic Schema Generation
-```python
-from tool_helpers import BaseTool
-
-class CalculatorTool(BaseTool):
-    def execute(self, expression: str) -> dict:
-        '''Performs mathematical calculations
-
-        Args:
-            expression: Math expression to evaluate (e.g., '2+2')
-        '''
-        result = safe_calculate(expression)
-        return {"result": result}
-
-# Schema auto-generated from docstring and type hints!
-tool = CalculatorTool()
+# Schema auto-generated from function signature and docstring!
+tool = Tool(calculate)
 schema = tool.get_schema()  # OpenAI-compatible schema
 ```
 
@@ -42,7 +31,23 @@ schema = tool.get_schema()  # OpenAI-compatible schema
 - No manual JSON schema writing
 - Type safety from Python type hints
 - Automatic parameter descriptions from docstrings
-- Consistent tool patterns across codebase
+- Simple function-based approach (no classes needed)
+
+#### Complete Agent Class
+```python
+from agents import Agent, Tool
+
+agent = Agent(instructions="You are a helpful assistant")
+agent.register_tool(Tool(calculate))
+
+response = agent.chat("What is 15 * 24?")
+```
+
+**Features:**
+- Agent loop handling built-in
+- ConversationMemory for multi-turn dialogue
+- Max iterations safety
+- ~400 lines of code you understand completely
 
 ### 2. **Memorable Tagline Throughout**
 

@@ -10,7 +10,13 @@
       "Bash(done)",
       "Bash(if [ -f \"$file/README.md\" ])",
       "Bash(then grep -n \"Lesson 0\\|Chat Completions\\|chat.completions\" \"$file/README.md\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(uv run:*)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:medium.com)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

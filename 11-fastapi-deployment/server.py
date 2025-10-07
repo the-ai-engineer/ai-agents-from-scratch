@@ -1,10 +1,15 @@
 """
-Lesson 13: FastAPI Deployment
+Lesson 11: FastAPI Deployment
 
-Production-ready FastAPI server for your AI agent using the Chat Completions API.
+Production-ready FastAPI server for your AI agent.
 """
 
-import os
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import agents module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import uuid
 from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException
@@ -14,66 +19,72 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Import from our agents framework
+from agents import Agent, tool, ConversationMemory
+
 load_dotenv()
 
 
-# === Agent Class (using Chat Completions API) ===
+# === Example Tools (optional - can be added to agents) ===
 
-class Agent:
-    """Simple agent for demonstration using Chat Completions API"""
+@tool
+def get_current_time() -> str:
+    """Get the current time
 
-    def __init__(self, model: str = "gpt-4o-mini", instructions: str = None):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    Returns:
+        Current time as a string
+    """
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+# === Agent Wrapper for Streaming ===
+
+class StreamingAgent:
+    """Wrapper around Agent class to add streaming support for FastAPI"""
+
+    def __init__(self, model: str = "gpt-4o-mini", system_prompt: str = None, tools: list = None):
+        self.agent = Agent(
+            model=model,
+            system_prompt=system_prompt or "You are a helpful assistant.",
+            tools=tools or []
+        )
+        self.client = OpenAI()
         self.model = model
-        self.conversation_history = []
         self.total_tokens = 0
-        self.instructions = instructions or "You are a helpful assistant."
 
     def chat(self, message: str) -> str:
-        """Send a message and get a response using Chat Completions API"""
-        # Add system message if this is the first message
-        if not self.conversation_history and self.instructions:
-            self.conversation_history.append({"role": "system", "content": self.instructions})
-
-        self.conversation_history.append({"role": "user", "content": message})
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=self.conversation_history
-        )
-
-        assistant_message = response.choices[0].message.content or ""
-        self.conversation_history.append({"role": "assistant", "content": assistant_message})
-
-        # Track tokens
-        if response.usage:
-            self.total_tokens += response.usage.total_tokens
-
-        return assistant_message
+        """Send a message and get a response"""
+        return self.agent.chat(message)
 
     def chat_stream(self, message: str):
-        """Stream response token by token using Chat Completions API"""
-        # Add system message if this is the first message
-        if not self.conversation_history and self.instructions:
-            self.conversation_history.append({"role": "system", "content": self.instructions})
+        """Stream response token by token"""
+        self.agent.memory.add_user_message(message)
 
-        self.conversation_history.append({"role": "user", "content": message})
-
-        stream = self.client.chat.completions.create(
+        stream = self.client.responses.create(
             model=self.model,
-            messages=self.conversation_history,
+            input=self.agent.memory.get_items(),
+            tools=self.agent.tool_schemas,
             stream=True
         )
 
         full_response = ""
         for chunk in stream:
-            if chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                full_response += content
-                yield content
+            for output in chunk.output:
+                if output.type == "message_delta" and output.content:
+                    full_response += output.content
+                    yield output.content
 
         # Add complete response to history
-        self.conversation_history.append({"role": "assistant", "content": full_response})
+        self.agent.memory.add_response_output([{
+            "type": "message",
+            "content": [{"type": "output_text", "text": full_response}]
+        }])
+
+    @property
+    def conversation_history(self):
+        """Get conversation history for compatibility"""
+        return self.agent.memory.get_items()
 
 
 # === Pydantic Models ===
@@ -129,10 +140,10 @@ app.add_middleware(
 )
 
 # In-memory session storage (Production: use Redis or database)
-sessions: dict[str, Agent] = {}
+sessions: dict[str, StreamingAgent] = {}
 
-# Instructions for our agent
-INSTRUCTIONS = """You are a helpful AI assistant built from scratch using the Chat Completions API.
+# System prompt for our agent
+SYSTEM_PROMPT = """You are a helpful AI assistant built from scratch.
 
 You can answer questions, help with tasks, and engage in conversation.
 Be concise, accurate, and friendly."""
@@ -140,14 +151,17 @@ Be concise, accurate, and friendly."""
 
 # === Helper Functions ===
 
-def get_or_create_session(conversation_id: str | None) -> tuple[str, Agent]:
+def get_or_create_session(conversation_id: str | None) -> tuple[str, StreamingAgent]:
     """Get existing session or create new one"""
     if conversation_id and conversation_id in sessions:
         return conversation_id, sessions[conversation_id]
 
-    # Create new session
+    # Create new session with agent framework
     new_id = str(uuid.uuid4())
-    sessions[new_id] = Agent(instructions=INSTRUCTIONS)
+    sessions[new_id] = StreamingAgent(
+        system_prompt=SYSTEM_PROMPT,
+        tools=[get_current_time]  # Add tools as needed
+    )
     return new_id, sessions[new_id]
 
 

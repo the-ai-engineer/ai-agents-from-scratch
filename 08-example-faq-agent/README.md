@@ -282,6 +282,112 @@ Notice how the agent searches when needed and admits when it doesn't have inform
 
 5. **Using in-memory ChromaDB in production**: Always use persistent storage in production so data survives restarts.
 
+## 🚀 Production Alternative: Mem0
+
+After understanding how RAG works with ChromaDB and OpenAI embeddings, you can choose to use managed services that simplify the infrastructure.
+
+### Mem0 for Semantic Memory
+
+Mem0 provides managed vector storage with semantic search built-in, replacing ChromaDB + embeddings setup:
+
+```python
+from mem0 import Memory
+
+# Initialize (no ChromaDB or embedding setup needed)
+memory = Memory()
+
+# Add your FAQs - Mem0 handles embeddings automatically
+faqs = [
+    "Refund policy: We offer full refunds within 30 days of purchase.",
+    "Shipping: Standard shipping takes 5-7 business days.",
+    "International shipping: Yes, we ship to over 100 countries.",
+]
+
+for faq in faqs:
+    memory.add(faq, metadata={"category": "support"})
+
+# Search semantically (no manual embedding conversion)
+results = memory.search("Can I get my money back?", limit=3)
+
+# Results are ranked by relevance automatically
+for result in results:
+    print(result['text'])
+    # "Refund policy: We offer full refunds within 30 days of purchase."
+```
+
+### Integrating Mem0 with Your Agent
+
+```python
+from mem0 import Memory
+
+class FAQAgent:
+    def __init__(self):
+        self.memory = Memory()
+        self.agent = Agent(instructions="You are a helpful FAQ assistant")
+
+        # Define search tool using Mem0
+        def search_faq(query: str) -> str:
+            results = self.memory.search(query, limit=3)
+
+            if not results:
+                return "No relevant FAQs found"
+
+            # Format results for the agent
+            formatted = "\n\n".join([
+                f"FAQ: {r['text']}\nCategory: {r['metadata'].get('category', 'general')}"
+                for r in results
+            ])
+
+            return formatted
+
+        # Register the tool
+        self.agent.register_tool(Tool(search_faq))
+
+    def ask(self, question: str) -> str:
+        return self.agent.chat(question)
+
+# Usage
+faq_agent = FAQAgent()
+answer = faq_agent.ask("What's your refund policy?")
+```
+
+### Comparison: ChromaDB vs Mem0
+
+| Feature | ChromaDB (DIY) | Mem0 (Managed) |
+|---------|---------------|----------------|
+| **Setup** | Manual client + embedding function | One line: `Memory()` |
+| **Embeddings** | You manage (OpenAI API calls) | Automatic |
+| **Infrastructure** | Self-hosted or cloud | Fully managed |
+| **Cost** | Embedding API + storage + compute | Usage-based pricing |
+| **Control** | Full control over chunking, models | Limited customization |
+| **Semantic features** | Basic similarity search | Advanced relevance ranking |
+| **Best for** | Custom needs, full control | Fast development, managed infra |
+
+### When to Use What
+
+**Use ChromaDB (what you learned):**
+- You need full control over embeddings model
+- You want to minimize external dependencies
+- You have specific chunking or retrieval requirements
+- You're already using your own vector database
+- Cost predictability is critical (you control embedding calls)
+
+**Use Mem0:**
+- You want to move fast without managing infrastructure
+- You value simplicity over customization
+- You want advanced features (multi-user isolation, long-term memory)
+- You prefer usage-based pricing over infrastructure management
+- You're building an MVP or prototype
+
+### The Philosophy
+
+This course taught you to build RAG from scratch with ChromaDB so you understand **how vector search actually works**. Now you can make informed decisions:
+
+- **Build** (ChromaDB): When you need control, have specific requirements, or want predictable costs
+- **Buy** (Mem0): When you want to move fast, need managed infrastructure, or value simplicity
+
+Understanding the fundamentals means you're never locked into a vendor and can always switch approaches.
+
 ## Real-World Impact
 
 Companies using RAG-powered FAQ agents see measurable results. Support ticket volume drops by 40-60% as common questions get answered instantly. First response time goes from minutes or hours to seconds. Support teams spend less time on repetitive questions and more on complex issues that need human judgment.
