@@ -2,23 +2,23 @@
 
 ## What You'll Learn
 
-In this lesson, you'll make your first API call to OpenAI and understand the fundamental building blocks of every AI application.
+Every AI application you'll ever build starts here: making API calls to Large Language Models. Before you touch any framework or library, you need to understand how to communicate with GPT models directly.
 
-Almost everything you build as an AI engineer involves making API calls to Large Language Models. Understanding how to call these APIs directly—before using frameworks—is essential.
+In this lesson, you'll make your first API call to OpenAI, learn how to control model behavior with simple parameters, and understand the fundamental patterns that power everything from chatbots to autonomous agents. You'll see how to stream responses for better user experience, make concurrent requests for speed, and handle the inevitable errors that occur in production.
 
-By the end of this lesson, you'll be able to send prompts to GPT models, understand how messages work, control response behavior with parameters, and track costs with token counting. You'll also know how to stream responses for better user experience and handle errors gracefully.
-
-This foundation is critical. Every advanced pattern you'll learn—from RAG systems to autonomous agents—builds on these basics.
+This isn't just academic knowledge. These basics are the foundation for every advanced pattern you'll learn—RAG systems, tool-calling agents, and multi-step workflows all build on what you'll master today.
 
 ## The Problem
 
-AI models are powerful, but they're useless if you can't communicate with them. You need to know how to send instructions, control behavior, and get reliable responses.
+AI models are incredibly powerful, but they're useless if you can't communicate with them effectively. You need to know how to send instructions, control their behavior, track costs, and handle failures.
 
-Most developers jump straight into frameworks that hide these fundamentals. When things break or don't work as expected, they're stuck. Understanding the OpenAI API directly gives you the control and confidence to build production systems.
+Most developers jump straight into high-level frameworks that abstract away these fundamentals. That works great—until something breaks. When your chatbot starts giving inconsistent responses or your API calls fail mysteriously, you need to understand what's actually happening under the hood.
+
+Learning the OpenAI API directly gives you control. You'll understand exactly what messages you're sending, how parameters affect behavior, and how to debug issues when they arise. This knowledge makes you a better AI engineer, whether you end up using frameworks or not.
 
 ## How the OpenAI API Works
 
-The OpenAI API gives you programmatic access to GPT models via HTTP endpoints. The concept is simple: you send structured inputs like prompts and context, and you get structured outputs like text or JSON.
+At its core, the OpenAI API is beautifully simple: your code sends an HTTP request with your prompt and parameters, OpenAI's servers process it with a GPT model, and you get back a structured response containing the generated text.
 
 ```mermaid
 graph LR
@@ -34,17 +34,17 @@ graph LR
     style D fill:#c8e6c9
 ```
 
-The **Responses API** is OpenAI's recommended way to interact with GPT models. Released in March 2025, it's an evolution of Chat Completions that brings added simplicity and powerful agentic primitives. It can manage conversation state server-side, supports built-in tools like web search, and provides better performance through improved caching.
+We'll use the **Responses API**, OpenAI's recommended interface released in March 2025. It's an evolution of the older Chat Completions API that simplifies common patterns and adds powerful capabilities like server-side conversation management and built-in tools. Everything you learn here will transfer to more advanced use cases later.
 
-### Message Types
+### Understanding Instructions and Input
 
-Every API call includes messages with specific roles:
+The Responses API simplifies how you communicate with GPT models. Instead of managing complex message arrays, you work with two primary components:
 
-- **system**: Sets the behavior and context for the assistant (e.g., "You are a helpful Python tutor")
-- **user**: The user's input or question
-- **assistant**: Previous responses from the AI (used for conversation history)
+**Instructions** set the AI's behavior and expertise—think of this as programming its personality. You might say "You are a helpful Python tutor" or "You are a security analyst reviewing code." This shapes how the model interprets and responds to requests.
 
-Think of the system message as programming the AI's personality and expertise. The user message is the actual query. Assistant messages maintain conversation context.
+**Input** is what you're actually asking. This is your question, your data, or your task. The model processes your input through the lens of the instructions you've provided.
+
+As conversations continue, the API maintains context automatically. When a user asks a follow-up question, the model remembers what was discussed previously. This context management happens server-side, making multi-turn conversations much simpler than with the older Chat Completions API.
 
 ```mermaid
 sequenceDiagram
@@ -66,62 +66,58 @@ sequenceDiagram
     C->>U: "Here's an example: async def..."
 ```
 
-### Key Parameters You Need to Know
+### Parameters That Control Behavior
 
-- **model**: Which GPT model to use (`gpt-4o-mini`, `gpt-4`, etc.)
-- **temperature**: Controls randomness (0 = deterministic, 1 = creative)
-- **max_tokens**: Maximum length of the response
-- **stream**: Whether to stream responses token-by-token
+Four parameters control how the model generates responses:
 
-### Temperature: Your Most Important Parameter
+**Model** determines which GPT version processes your request. For learning and most applications, `gpt-4o-mini` offers the best balance of speed, cost, and quality. For complex reasoning tasks, upgrade to `gpt-4o` or `gpt-4`.
 
-Temperature controls how random or creative the model's responses are:
+**Temperature** is your creativity dial. Set it to 0 for deterministic, factual tasks like code generation or data extraction. The model will consistently choose the most likely tokens, giving you repeatable results. Set it higher (0.7-1.0) for creative tasks like brainstorming or writing marketing copy. Most production systems should default to 0.
 
-- **0**: Deterministic, factual tasks (code generation, data extraction, classification)
-- **0.3-0.5**: Balanced responses (most business use cases)
-- **0.7-1.0**: Creative tasks (brainstorming, storytelling, marketing copy)
+**Max tokens** caps the response length. This prevents runaway costs and ensures responses fit your UI constraints. The model will stop generating when it hits this limit or naturally completes its response.
 
-For production systems, default to temperature=0 unless you specifically need creativity.
+**Stream** determines whether you get the full response at once or token-by-token as it's generated. Streaming creates a better user experience for longer responses—users see text appearing progressively, like in ChatGPT.
+
+### The Temperature Trade-off
+
+Temperature deserves special attention because developers often misunderstand it. At temperature 0, you get consistency. Ask the same question twice, you'll get nearly identical answers. This is critical for business logic, classification, and anything requiring reliability.
+
+Higher temperatures introduce randomness. At 0.7 or 1.0, the same prompt yields different responses each time. This is useful for creative tasks where you want variety, but dangerous for production systems that need predictable behavior.
+
+Many developers leave temperature at its default value and wonder why their AI application behaves inconsistently. For most use cases—especially in production—start with temperature 0. Only increase it when you specifically need creativity or variation.
 
 ## Setting Up Your Environment
 
-Get your API key from [platform.openai.com](https://platform.openai.com). Create a `.env` file in the repository root:
+Before you make your first API call, get your API key from [platform.openai.com](https://platform.openai.com/api-keys). Create a `.env` file in the repository root with your key:
 
 ```
 OPENAI_API_KEY=your-key-here
 ```
 
-Never hardcode API keys directly in your code. Always use environment variables.
+Never hardcode API keys in your source code. Always use environment variables to keep credentials secure and separate from your codebase.
 
 ## Your First API Call
 
-Here's a minimal working example using the Responses API:
+Making an API call is surprisingly straightforward. You initialize a client with your API key, call `responses.create()` with your model and input, and access the response text. Here's the minimal version:
 
 ```python
 from openai import OpenAI
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
+client = OpenAI()
 
-# Initialize the client (reads OPENAI_API_KEY from environment)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Make a simple API call
 response = client.responses.create(
     model="gpt-4o-mini",
     input="Explain async/await in Python in one paragraph"
 )
 
-# Print the AI's response
 print(response.output_text)
 ```
 
-Run this code. If you see a response, congratulations—you're now making API calls to an LLM.
+Run this code. If you see a response explaining async/await, congratulations—you just communicated with an AI model.
 
-### Adding System Instructions
-
-You can control behavior with instructions (like the old system message):
+To control the model's behavior, add instructions:
 
 ```python
 response = client.responses.create(
@@ -129,46 +125,25 @@ response = client.responses.create(
     instructions="You are a helpful Python tutor. Explain concepts clearly with examples.",
     input="Explain async/await in Python"
 )
-
-print(response.output_text)
 ```
 
-## Understanding the Response
+The instructions shape how the model interprets and responds to your input. Experiment with different instructions to see how the same input can yield very different responses.
 
-The API returns more than just text. Explore the response object:
+## Understanding Responses and Costs
 
-```python
-response = client.responses.create(
-    model="gpt-4o-mini",
-    input="What is 2 + 2?"
-)
+Every response includes more than just the generated text. The response object contains usage information that's critical for cost management:
 
-print(response.output_text)           # The actual answer
-print(response.usage.input_tokens)    # Input tokens
-print(response.usage.output_tokens)   # Output tokens
-print(response.usage.total_tokens)    # Total tokens used
-print(response.model)                 # Which model processed this
-```
+- `response.output_text` gives you the generated text
+- `response.usage.input_tokens` shows tokens in your prompt
+- `response.usage.output_tokens` shows tokens in the response
+- `response.usage.total_tokens` shows combined token count
+- `response.model` confirms which model processed your request
 
-Token counts are critical for cost management. Production systems always track usage.
-
-### Response Structure
-
-The Responses API has a cleaner structure than Chat Completions:
-
-```python
-# Easy access to text output
-text = response.output_text
-
-# Or access the full output structure
-for output in response.output:
-    for content in output.content:
-        print(content.text)
-```
+Tokens determine your costs. OpenAI charges based on input and output tokens, with prices varying by model. Production systems must track token usage to avoid surprises. A chatbot that processes thousands of conversations without monitoring could rack up significant costs quickly.
 
 ## Streaming for Better UX
 
-For longer responses, streaming provides a better user experience. Users see text appear as it's generated, like ChatGPT:
+When responses might take a few seconds, streaming dramatically improves user experience. Instead of waiting for the complete response, users see text appearing progressively—exactly like ChatGPT's typing effect.
 
 ```python
 stream = client.responses.create(
@@ -178,107 +153,138 @@ stream = client.responses.create(
 )
 
 for event in stream:
-    if event.type == "content.delta":
+    if hasattr(event, "type") and "text.delta" in event.type:
         print(event.delta, end="", flush=True)
 ```
 
-Use streaming for interactive applications where responsiveness matters.
+The difference is psychological but powerful. A 5-second wait feels much longer than watching text appear over 5 seconds. For customer-facing applications, chatbots, or any interactive interface, streaming is essential.
 
-The Responses API provides cleaner streaming events compared to Chat Completions, making it easier to handle different types of updates (text, tool calls, etc.).
+The Responses API provides cleaner streaming events than the older Chat Completions API, making it easier to handle different types of updates as your applications grow more complex.
+
+## Async Client for Speed
+
+When you need to make multiple API calls, doing them sequentially is wasteful. While one request waits for a response, your code sits idle. The `AsyncOpenAI` client lets you make concurrent requests, dramatically reducing total execution time.
+
+```python
+from openai import AsyncOpenAI
+import asyncio
+
+async_client = AsyncOpenAI()
+
+async def process_multiple_prompts():
+    prompts = ["What is Python?", "What is JavaScript?", "What is Rust?"]
+
+    tasks = [
+        async_client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+            temperature=0
+        )
+        for prompt in prompts
+    ]
+
+    responses = await asyncio.gather(*tasks)
+    return responses
+```
+
+This pattern is essential for production systems. If you're building a bulk content generator, a multi-step research assistant, or processing user requests in a web application, async execution prevents bottlenecks.
+
+The example code includes a timing comparison (`02-async.py`) showing that parallel execution is typically 2-3x faster than sequential. For applications processing dozens or hundreds of requests, this difference compounds quickly.
+
+Use the async client when integrating with async frameworks like FastAPI, when implementing the parallel workflows you'll learn in Lesson 07, or anytime you need to make multiple independent API calls.
 
 ## Error Handling
 
-API calls can fail. Handle errors gracefully:
+API calls fail more often than you'd expect. Networks drop, rate limits hit, services have outages. Production systems must handle these failures gracefully.
+
+The OpenAI client provides specific exception types for different failure modes. Catch `RateLimitError` when you exceed your quota, `APIConnectionError` for network issues, and the general `APIError` as a catchall. Your code should handle these exceptions appropriately—perhaps by showing users an error message, queuing the request for retry, or logging the failure for investigation.
+
+Beyond exception handling, configure automatic retries at the client level:
 
 ```python
-from openai import OpenAI, APIError, RateLimitError, APIConnectionError
+from openai import OpenAI
 
-client = OpenAI()
-
-try:
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input="Hello"
-    )
-    print(response.output_text)
-except RateLimitError:
-    print("Rate limit hit. Slow down or upgrade your plan.")
-except APIConnectionError:
-    print("Network error. Check your connection.")
-except APIError as e:
-    print(f"API error: {e}")
+client = OpenAI(
+    max_retries=3,
+    timeout=60.0
+)
 ```
 
-Production systems need robust error handling. The API can fail due to rate limits, network issues, or service outages.
+The client will automatically retry failed requests up to three times with exponential backoff. This handles transient network issues and temporary service disruptions without additional code. The timeout prevents requests from hanging indefinitely.
+
+The example code (`03-errors.py`) demonstrates both exception handling and retry configuration. In production, you'll want detailed logging around failures to understand patterns and identify issues before they impact users.
 
 ## Running the Example Code
 
-This lesson includes a complete working example with all these concepts:
+This lesson includes multiple focused examples you can run immediately:
 
 ```bash
 cd 01-api-basics
+
+# Main example with all concepts (edit to uncomment different examples)
 uv run example.py
+
+# Simple examples: basic calls and streaming
+uv run 01-basic.py
+
+# Timing comparison: async parallel vs sequential execution
+uv run 02-async.py
+
+# Error handling with automatic retries
+uv run 03-errors.py
 ```
 
-The example demonstrates basic calls, streaming, token counting, and error handling.
+Start with `example.py` to see all concepts in one place. The file includes commented-out function calls—uncomment the ones you want to experiment with. The other files focus on specific techniques, making them easier to study individually.
 
 ## Key Takeaways
 
-1. **Use the Responses API for all new projects.** It's simpler, more powerful, and recommended by OpenAI.
-2. **Always set temperature=0 for deterministic tasks.** Default temperature (1.0) is too high for most production use cases.
-3. **Use instructions to set behavior.** Control the AI's personality and expertise with clear instructions.
-4. **Count tokens to estimate costs.** Track usage in production to avoid surprises.
-5. **Stream responses for better UX.** Users prefer seeing responses appear progressively.
-6. **Handle API errors.** Networks fail, rate limits hit, services have outages.
+**Use the Responses API** for all new projects. It's simpler and more powerful than Chat Completions.
+
+**Set temperature=0** for production tasks requiring consistency. Higher values introduce randomness that can break business logic.
+
+**Track token usage** from day one. Production systems must monitor costs to avoid surprises.
+
+**Use AsyncOpenAI** when making multiple API calls. Parallel execution is 2-3x faster than sequential.
+
+**Stream responses** in interactive applications. Users prefer seeing text appear progressively.
+
+**Configure retries and timeouts** at the client level. Handle transient failures automatically.
+
+**Control behavior with instructions.** Clear instructions are your most powerful tool for shaping model responses.
 
 ## Common Pitfalls
 
-1. **Not setting temperature**: Default randomness is too high for business logic
-2. **Forgetting to count tokens**: Costs can spiral in production
-3. **Not handling errors**: API calls fail more than you think
-4. **Hardcoding API keys**: Always use environment variables
-5. **Ignoring instructions parameter**: It's your most powerful tool for controlling behavior
-6. **Using Chat Completions for new projects**: Responses API is simpler and recommended
+Leaving temperature at default values causes inconsistent responses in production. Always set it explicitly.
+
+Forgetting to track token usage leads to unexpected costs. Monitor usage from the start.
+
+Not handling API errors gracefully creates a poor user experience. Networks fail, rate limits hit, services go down.
+
+Hardcoding API keys in source code is a security risk. Always use environment variables.
+
+Making multiple sequential API calls when async would be faster wastes time and degrades UX.
+
+Using the older Chat Completions API for new projects when Responses API is simpler and recommended.
 
 ## Real-World Impact
 
-Every AI application you'll build starts with these API calls. Customer support bots, content generators, data extractors, and autonomous agents all depend on this foundation.
+Every AI application you'll build—customer support bots, content generators, data extractors, autonomous agents—starts with these API calls. Companies save thousands of hours automating tasks with AI, but only if you can reliably call the API, control its behavior, track costs, and handle errors gracefully.
 
-Companies save thousands of hours by automating tasks with AI, but only if you can reliably call the API, control its behavior, and handle errors. This lesson gives you that foundation.
+These fundamentals compound. Understanding how temperature affects consistency helps you debug flaky production behavior. Knowing how to use async execution makes your applications responsive under load. Tracking token usage prevents cost overruns. This foundation matters more than any framework or tool.
 
 ## Responses API vs Chat Completions
 
-You may encounter older code using `client.chat.completions.create()`. Here's the key difference:
+You'll encounter older code using `client.chat.completions.create()`. That's the Chat Completions API, which requires managing message arrays manually. The Responses API simplifies this with `instructions` and `input` parameters, handles conversation state server-side, and will receive new features first.
 
-**Chat Completions (legacy, but still supported):**
-```python
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": "You are helpful."},
-        {"role": "user", "content": "Hello"}
-    ]
-)
-print(response.choices[0].message.content)
-```
-
-**Responses API (recommended):**
-```python
-response = client.responses.create(
-    model="gpt-4o-mini",
-    instructions="You are helpful.",
-    input="Hello"
-)
-print(response.output_text)
-```
-
-The Responses API is simpler, handles state management better, and will receive new features first. Use it for all new projects.
+For new projects, always use the Responses API. The code is cleaner, the patterns are simpler, and the capabilities are more powerful. All lessons in this course use the Responses API.
 
 ## Assignment
 
-Make your first successful API call using the Responses API. Print both the response text and the token usage information. Experiment with at least three different prompts using different temperature values. Notice how temperature=0 gives consistent responses while temperature=0.9 varies each time.
+Run the example code and observe how different parameters affect responses. Uncomment the `temperature_examples()` function in `example.py` and run it multiple times. Notice how temperature=0 gives consistent responses while temperature=1.0 varies significantly each time.
 
-Then modify the `instructions` parameter to change the AI's personality (e.g., "You are a sarcastic comedian" vs. "You are a formal professor"). See how the same input gets different responses.
+Then experiment with the `instructions` parameter. Try setting instructions to "You are a sarcastic comedian" versus "You are a formal professor" and ask the same question with both. See how dramatically instructions shape responses.
+
+Finally, run `02-async.py` to see the performance difference between parallel and sequential execution. Watch the timing numbers—this performance gain compounds as your applications scale.
 
 ## Next Steps
 
