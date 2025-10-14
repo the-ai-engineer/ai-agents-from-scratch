@@ -4,7 +4,7 @@ Lesson 02: Conversation Memory - Automatic Management
 Learn how OpenAI manages conversation state server-side automatically.
 
 Run from project root:
-    uv run python 02-conversation-memory/01-automatic.py
+    uv run python 05-conversation-memory/01-automatic.py
 """
 
 from openai import OpenAI

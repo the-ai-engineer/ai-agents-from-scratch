@@ -9,7 +9,7 @@ This lesson teaches how to BUILD the Agent class from scratch using:
 - Helper methods for cleaner code organization
 
 Run from project root:
-    uv run python 06-agent-architecture/class.py
+    uv run python 09-agent-architecture/class.py
 """
 
 import json

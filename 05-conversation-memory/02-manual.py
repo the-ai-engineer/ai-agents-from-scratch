@@ -4,7 +4,7 @@ Lesson 02: Conversation Memory - Manual Management
 Learn how to manage conversation history manually for full control.
 
 Run from project root:
-    uv run python 02-conversation-memory/02-manual.py
+    uv run python 05-conversation-memory/02-manual.py
 """
 
 from openai import OpenAI

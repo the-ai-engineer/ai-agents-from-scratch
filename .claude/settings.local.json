@@ -16,7 +16,8 @@
       "WebSearch",
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:medium.com)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

@@ -185,7 +185,7 @@ echo "OPENAI_API_KEY=your-key" > .env
 uv sync
 
 # Run any lesson
-uv run 01-api-basics/example.py
+uv run 04-api-basics/example.py
 uv run 06-workflow-patterns/example.py
 uv run 10-example-faq-agent/example.py
 ```
@@ -245,7 +245,7 @@ If you find this valuable, consider:
 
 1. **Clone the repo**: `git clone https://github.com/yourusername/ai-agents-from-scratch`
 2. **Set up your environment**: Add your OpenAI API key to `.env`
-3. **Run the first lesson**: `uv run 01-api-basics/example.py`
+3. **Run the first lesson**: `uv run 04-api-basics/example.py`
 
 **Total cost to complete:** ~$2 in OpenAI credits (we use `gpt-4o-mini`)
 
@@ -292,8 +292,8 @@ MIT License - Use freely for commercial or personal projects.
 
 Stop copying framework code. Start understanding how agents actually work.
 
-**[Get Started →](./01-api-basics/README.md)**
+**[Get Started →](./04-api-basics/README.md)**
 
 ---
 
-*Have questions? [Open an issue](https://github.com/yourusername/ai-agents-from-scratch/issues) or start with [Lesson 01](./01-api-basics/README.md)*
+*Have questions? [Open an issue](https://github.com/yourusername/ai-agents-from-scratch/issues) or start with [Lesson 01](./04-api-basics/README.md)*

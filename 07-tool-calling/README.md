@@ -234,7 +234,7 @@ Three examples showing progression from manual schemas to the @tool decorator:
 3. **Multiple Tools with Registry**: Clean pattern for managing multiple tools
 
 ```bash
-cd 04-tool-calling
+cd 07-tool-calling
 uv run basic.py
 ```
 
@@ -247,7 +247,7 @@ Three examples demonstrating production-ready patterns:
 3. **Type Validation and Error Handling**: Leveraging type hints for validation
 
 ```bash
-cd 04-tool-calling
+cd 07-tool-calling
 uv run advanced.py
 ```
 
@@ -420,7 +420,7 @@ Test cases should include:
 
 You've mastered tool calling from fundamentals to production patterns. Now it's time to learn how to orchestrate multiple LLM calls in sophisticated workflows.
 
-Move to **05-workflow-patterns** to learn five fundamental patterns for building complex AI systems: chaining, routing, parallelization, orchestrator-workers, and evaluator-optimizer.
+Move to **08-workflow-patterns** to learn five fundamental patterns for building complex AI systems: chaining, routing, parallelization, orchestrator-workers, and evaluator-optimizer.
 
 ## Resources
 

@@ -266,7 +266,7 @@ This lesson includes two example files showing the progression from raw loop to 
 ### Part 1: Raw Agent Loop
 
 ```bash
-cd 06-agent-architecture
+cd 09-agent-architecture
 uv run loop.py
 ```
 
@@ -279,7 +279,7 @@ You'll see:
 ### Part 2: Agent Class
 
 ```bash
-cd 06-agent-architecture
+cd 09-agent-architecture
 uv run class.py
 ```
 
@@ -394,7 +394,7 @@ Notice what repeats across all three agents. That's what belongs in your base Ag
 
 You've mastered agent architecture from raw loops to production classes. Now it's time to tackle the challenges of real-world agent systems.
 
-Move to **07-advanced-memory** to learn how to handle token limits, implement automatic history trimming, persist conversations, and use managed memory services like mem0.
+Move to **10-advanced-memory** to learn how to handle token limits, implement automatic history trimming, persist conversations, and use managed memory services like mem0.
 
 ## Resources
 

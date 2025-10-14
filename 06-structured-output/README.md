@@ -249,7 +249,7 @@ If the LLM tries to return invalid data, the request fails and retries automatic
 The `example.py` file demonstrates all seven structured output patterns:
 
 ```bash
-cd 03-structured-output
+cd 06-structured-output
 uv run example.py
 ```
 
@@ -342,7 +342,7 @@ Bonus: Add validation constraints (salary must be positive, skills list can't be
 
 You've mastered structured output for data extraction and classification. Now it's time to give your AI the ability to take actions in the real world.
 
-Move to [04-tool-calling-basics](/Users/owainlewis/Projects/the-ai-engineer/ai-agents-from-scratch/04-tool-calling-basics) to learn how to let the LLM call functions, query APIs, and interact with external systems.
+Move to [07-tool-calling-basics](/Users/owainlewis/Projects/the-ai-engineer/ai-agents-from-scratch/07-tool-calling-basics) to learn how to let the LLM call functions, query APIs, and interact with external systems.
 
 ## Resources
 

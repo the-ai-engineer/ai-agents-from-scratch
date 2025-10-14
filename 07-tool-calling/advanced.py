@@ -4,7 +4,7 @@ Lesson 04: Tool Calling - Advanced Examples
 Production-ready tool calling patterns with error handling and multiple tools.
 
 Run from project root:
-    uv run python 04-tool-calling/advanced.py
+    uv run python 07-tool-calling/advanced.py
 """
 
 import os

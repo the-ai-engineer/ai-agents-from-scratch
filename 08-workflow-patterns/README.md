@@ -643,7 +643,7 @@ This lesson includes:
 
 Run the example:
 ```bash
-cd 05-workflow-patterns
+cd 08-workflow-patterns
 uv run example.py
 ```
 
@@ -665,4 +665,4 @@ uv run example.py
 - Patterns can be combined for sophisticated multi-stage workflows
 - These five patterns are foundational building blocks for agents
 
-**Next:** [Lesson 06 - Agent Architecture](../06-agent-architecture) - Build agents that decide their own workflows dynamically
+**Next:** [Lesson 06 - Agent Architecture](../09-agent-architecture) - Build agents that decide their own workflows dynamically

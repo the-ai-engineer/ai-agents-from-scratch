@@ -8,7 +8,7 @@ This lesson shows three approaches:
 3. @tool decorator with multiple tools
 
 Run from project root:
-    uv run python 04-tool-calling/basic.py
+    uv run python 07-tool-calling/basic.py
 """
 
 import os
