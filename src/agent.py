@@ -116,7 +116,7 @@ class Agent:
         Example:
             def get_weather(city: str) -> str:
                 '''Get the current weather for a city.'''
-                return f"Weather in {city}: Sunny, 72°F"
+                return f"Weather in {city}: Sunny, 72F"
 
             agent.register_tool(get_weather)
         """

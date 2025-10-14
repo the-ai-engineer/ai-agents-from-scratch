@@ -58,11 +58,7 @@ Start at lesson 01 and work through each lesson in order.
 ### If you know the basics:
 - Skip to lesson 04 for tool calling
 - Jump to lesson 05 for workflow patterns
-- Jump to lesson 06 for agent architecture
-- Go to lesson 08 for complete examples
-
-### If you want to see working agents:
-Check out lessons 08-11 for complete, production-ready examples.
+- Jump to lesson 06 for agent architecture with reusable Agent class
 
 ## Contributing
 

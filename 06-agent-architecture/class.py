@@ -1,14 +1,15 @@
 """
-Lesson 06: Agent Architecture - Part 2: The Agent Class
+Lesson 06: Agent Architecture - The Agent Class
 
 Learn how to abstract the agent loop into a reusable, production-ready class.
 
-This lesson teaches you how to BUILD the Agent class from scratch using:
+This lesson teaches how to BUILD the Agent class from scratch using:
 - ConversationMemory for managing conversation history
 - @tool decorator for automatic schema generation
 - Helper methods for cleaner code organization
 
-This builds on the raw loop implementation from loop.py by adding abstraction and reusability.
+Run from project root:
+    uv run python 06-agent-architecture/class.py
 """
 
 import json
@@ -21,9 +22,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ============================================================================
-# ConversationMemory - Multi-Turn Dialogue Management
-# ============================================================================
+##=================================================##
+## ConversationMemory - Multi-Turn Dialogue Management
+##=================================================##
 
 class ConversationMemory:
     """
@@ -34,12 +35,6 @@ class ConversationMemory:
     """
 
     def __init__(self, system_prompt: str = None):
-        """
-        Initialize conversation memory.
-
-        Args:
-            system_prompt: Optional system message with instructions for the LLM
-        """
         self.items = []
         if system_prompt:
             self.add_system_message(system_prompt)
@@ -74,9 +69,9 @@ class ConversationMemory:
         return len(self.items)
 
 
-# ============================================================================
-# Tool - Automatic Schema Generation
-# ============================================================================
+##=================================================##
+## Tool - Automatic Schema Generation
+##=================================================##
 
 def extract_function_params(func: Callable) -> tuple[dict, list[str]]:
     """Extract parameter fields and required list from a function."""
@@ -158,9 +153,9 @@ def tool(func: Callable) -> Callable:
     return func
 
 
-# ============================================================================
-# Agent - Reusable Agent with Tool Calling
-# ============================================================================
+##=================================================##
+## Agent - Reusable Agent with Tool Calling
+##=================================================##
 
 class Agent:
     """
@@ -267,7 +262,7 @@ class Agent:
 
             # Check if LLM wants to use tools
             if not self._has_function_calls(response.output):
-                # No tools needed - we have our final answer!
+                # No tools needed - we have our final answer
                 answer = self._extract_text_response(response.output)
                 self.memory.add_response_output(response.output)
                 return answer
@@ -288,9 +283,9 @@ class Agent:
         self.memory.clear()
 
 
-# ============================================================================
-# Example Tools
-# ============================================================================
+##=================================================##
+## Example Tools
+##=================================================##
 
 @tool
 def get_weather(city: str) -> str:
@@ -315,74 +310,43 @@ def calculate(expression: str) -> str:
         expression: Math expression to evaluate (e.g., '2+2', '15*24')
     """
     try:
-        # Use eval with restricted builtins for simple math
-        # In production, use a proper math parser like py-expression-eval
         result = eval(expression, {"__builtins__": {}}, {})
         return str(result)
     except Exception as e:
         return f"Error: {str(e)}"
 
 
-# ============================================================================
-# Usage Examples
-# ============================================================================
+##=================================================##
+## Example 1: Basic agent usage with tools
+##=================================================##
 
-def basic_agent_example():
-    """Example 1: Basic agent usage with tools"""
-    print("=" * 60)
-    print("Example 1: Basic Agent Usage")
-    print("=" * 60)
+# Create agent with tools passed in constructor
+agent = Agent(
+    model="gpt-4o-mini",
+    max_iterations=5,
+    system_prompt="You are a helpful assistant with access to tools.",
+    tools=[get_weather, calculate]
+)
 
-    # Create agent with tools passed in constructor
-    agent = Agent(
-        model="gpt-4o-mini",
-        max_iterations=5,
-        system_prompt="You are a helpful assistant with access to tools.",
-        tools=[get_weather, calculate]
-    )
-
-    # Use the agent
-    questions = [
-        "What's the weather in Paris?",
-        "What is 15 * 24?",
-        "What's the weather in London and what is 100 + 50?",
-    ]
-
-    for question in questions:
-        print(f"\nUser: {question}")
-        answer = agent.chat(question)
-        print(f"Assistant: {answer}")
+# Use the agent
+agent.chat("What's the weather in Paris?")
+# agent.chat("What is 15 * 24?")
+# agent.chat("What's the weather in London and what is 100 + 50?")
 
 
-def conversation_memory_example():
-    """Example 2: Agent maintains conversation context"""
-    print("\n\n" + "=" * 60)
-    print("Example 2: Conversation Memory")
-    print("=" * 60 + "\n")
+##=================================================##
+## Example 2: Agent maintains conversation context
+##=================================================##
 
-    # Create agent and register tools
-    agent = Agent(
-        system_prompt="You are a helpful weather assistant.",
-        tools=[get_weather]
-    )
+# Create agent and register tools
+agent = Agent(
+    system_prompt="You are a helpful weather assistant.",
+    tools=[get_weather]
+)
 
-    # Multi-turn conversation
-    print("User: What's the weather in Paris?")
-    answer1 = agent.chat("What's the weather in Paris?")
-    print(f"Assistant: {answer1}")
+# Multi-turn conversation
+agent.chat("What's the weather in Paris?")
+agent.chat("What about London?")
+agent.chat("Which one is warmer?")
 
-    print("\nUser: What about London?")
-    answer2 = agent.chat("What about London?")
-    print(f"Assistant: {answer2}")
-
-    print("\nUser: Which one is warmer?")
-    answer3 = agent.chat("Which one is warmer?")
-    print(f"Assistant: {answer3}")
-
-    # Show memory length
-    print(f"\n[Memory contains {len(agent.memory)} items]")
-
-
-if __name__ == "__main__":
-    basic_agent_example()
-    conversation_memory_example()
+# len(agent.memory)  # Shows memory contains multiple items

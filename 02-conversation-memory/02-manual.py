@@ -1,22 +1,17 @@
 """
-Lesson 02: Conversation Memory
+Lesson 02: Conversation Memory - Manual Management
 
-Learn how to maintain context across multiple turns in a conversation.
+Learn how to manage conversation history manually for full control.
+
+Run from project root:
+    uv run python 02-conversation-memory/02-manual.py
 """
 
 from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
-
 client = OpenAI()
-
-
-def call_llm(input, temperature=0):
-    response = client.responses.create(
-        model="gpt-4o-mini", input=input, temperature=temperature
-    )
-    return response
 
 
 ##=================================================##
@@ -24,39 +19,53 @@ def call_llm(input, temperature=0):
 ##=================================================##
 
 # First call
-response1 = call_llm("My name is Alice.")
+response1 = client.responses.create(
+    model="gpt-4o-mini",
+    input="My name is Alice.",
+    temperature=0
+)
 
-print("User: My name is Alice.")
-print(f"Assistant: {response1.output_text}\n")
+# response1.output_text
 
 # Second call - doesn't include previous exchange
-response2 = call_llm("What's my name?")
+response2 = client.responses.create(
+    model="gpt-4o-mini",
+    input="What's my name?",
+    temperature=0
+)
 
-print("User: What's my name?")
-print(f"Assistant: {response2.output_text}")
+# response2.output_text  # LLM doesn't know - no memory!
+
 
 ##=================================================##
-## Example 2: Basic conversation WITH memory
+## Example 2: Basic conversation WITH manual memory
 ##=================================================##
 
-# Keep track of the conversation history
+# Keep track of the conversation history manually
 messages = []
 
 # First turn
-messages.append({"role": "user", "content": "My name is Owain."})
-response1 = call_llm(messages)
+messages.append({"role": "user", "content": "My name is Alice."})
+response1 = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages,
+    temperature=0
+)
 messages.append({"role": "assistant", "content": response1.output_text})
 
-print("User: My name is Owain.")
-print(f"Assistant: {response1.output_text}\n")
+# response1.output_text
 
 # Second turn - LLM remembers because we pass full history
 messages.append({"role": "user", "content": "What's my name?"})
-response2 = call_llm(messages)
+response2 = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages,
+    temperature=0
+)
 messages.append({"role": "assistant", "content": response2.output_text})
 
-print("User: What's my name?")
-print(f"Assistant: {response2.output_text}\n")
+# response2.output_text  # "Your name is Alice."
+
 
 ##=================================================##
 ## Example 3: Using system instructions
@@ -66,35 +75,45 @@ messages = [
     {"role": "system", "content": "You are a pirate. Always respond in pirate speak."}
 ]
 
-conversations = [
-    "What's the weather like?",
-    "Can you help me with math?",
-]
+# First turn
+messages.append({"role": "user", "content": "What's the weather like?"})
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages,
+    temperature=0.8
+)
+messages.extend(response.output)
 
-for user_msg in conversations:
-    messages.append({"role": "user", "content": user_msg})
-    response = call_llm(messages, temperature=0.8)
-    messages.extend(response.output)
+# response.output_text
 
-    print(f"User: {user_msg}")
-    print(f"Pirate: {response.output_text}\n")
+# Second turn - maintains pirate personality
+messages.append({"role": "user", "content": "Can you help me with math?"})
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages,
+    temperature=0.8
+)
+messages.extend(response.output)
 
+# response.output_text
+
+
+##=================================================##
+## Example 4: ConversationMemory helper class
+##=================================================##
 
 class ConversationMemory:
     """Simple helper to manage conversation history"""
 
     def __init__(self, instructions: str = None):
-        """Initialize with optional system instructions"""
         self.messages = []
         if instructions:
             self.messages.append({"role": "system", "content": instructions})
 
     def add_message(self, role: str, content: str):
-        """Add a message to history"""
         self.messages.append({"role": role, "content": content})
 
     def get_history(self):
-        """Get full conversation history"""
         return self.messages
 
     def clear(self):
@@ -103,30 +122,38 @@ class ConversationMemory:
         self.messages = system_messages
 
 
-def call_llm_with_memory(memory, user_message, temperature=0):
-    """Helper to add message, call LLM, and store response"""
-    memory.add_message("user", user_message)
-    response = call_llm(memory.get_history(), temperature)
-    memory.add_message("assistant", response.output_text)
-    return response
-
-
-##=================================================##
-## Example 4: Using the helper class and function
-##=================================================##
-
 # Create conversation with system instructions
 memory = ConversationMemory(instructions="You are a friendly math tutor.")
 
-# Much cleaner with the helper function!
-response1 = call_llm_with_memory(memory, "I have 10 apples.")
-print("User: I have 10 apples.")
-print(f"Assistant: {response1.output_text}\n")
+# Turn 1
+memory.add_message("user", "I have 10 apples.")
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=memory.get_history(),
+    temperature=0
+)
+memory.add_message("assistant", response.output_text)
 
-response2 = call_llm_with_memory(memory, "I buy 5 more apples.")
-print("User: I buy 5 more apples.")
-print(f"Assistant: {response2.output_text}\n")
+# response.output_text
 
-response3 = call_llm_with_memory(memory, "How many apples do I have now?")
-print("User: How many apples do I have now?")
-print(f"Assistant: {response3.output_text}\n")
+# Turn 2
+memory.add_message("user", "I buy 5 more apples.")
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=memory.get_history(),
+    temperature=0
+)
+memory.add_message("assistant", response.output_text)
+
+# response.output_text
+
+# Turn 3 - remembers both previous turns
+memory.add_message("user", "How many apples do I have now?")
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=memory.get_history(),
+    temperature=0
+)
+memory.add_message("assistant", response.output_text)
+
+# response.output_text  # "15 apples"

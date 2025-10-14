@@ -1,7 +1,10 @@
 """
-Lesson 02: Conversation Memory
+Lesson 02: Conversation Memory - Automatic Management
 
-Learn how to maintain context across multiple turns in a conversation.
+Learn how OpenAI manages conversation state server-side automatically.
+
+Run from project root:
+    uv run python 02-conversation-memory/01-automatic.py
 """
 
 from openai import OpenAI
@@ -9,40 +12,42 @@ from openai import conversations
 from dotenv import load_dotenv
 
 load_dotenv()
-
 client = OpenAI()
 
 
-def stateful_conversation(messages: list[str]):
-    """
-    Have a multi-turn conversation with stateful context.
+##=================================================##
+## Automatic conversation management with OpenAI
+##=================================================##
 
-    Args:
-        messages: List of user messages
+# Create a conversation - OpenAI will manage state server-side
+conversation = conversations.create()
 
-    Returns:
-        List of assistant responses
-    """
-    conversation = conversations.create()
+# Turn 1
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="My name is Alice.",
+    store=True,
+    conversation=conversation.id,
+)
 
-    for i, message in enumerate(messages):
-        print(f"\nTurn {i + 1}: {message}")
-        response = client.responses.create(
-            model="gpt-4o-mini",
-            input=message,
-            # Let open AI manage our memory
-            store=True,
-            conversation=conversation.id,
-        )
+# response.output_text
 
-        print(f"Response: {response.output_text}")
+# Turn 2 - automatically remembers Turn 1
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="What's my name?",
+    store=True,
+    conversation=conversation.id,
+)
 
+# response.output_text  # "Your name is Alice."
 
-# Usage
-conversation = [
-    "My name is Owain?",
-    "What is my name?",
-    "Can you remind me of my name?",
-]
+# Turn 3 - still remembers
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="Can you remind me what we discussed?",
+    store=True,
+    conversation=conversation.id,
+)
 
-stateful_conversation(conversation)
+# response.output_text

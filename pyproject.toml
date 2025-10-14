@@ -24,3 +24,8 @@ dev = [
     "ruff>=0.1.0",
     "ipykernel>=6.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]
