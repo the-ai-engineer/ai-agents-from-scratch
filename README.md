@@ -1,78 +1,21 @@
 # Build AI Agents from First Principles
 
-> *Learn to build autonomous AI agents from scratch using pure Python and the OpenAI API*
+This is a short course that shows how to build AI agents and AI systems from scratch in pure Python.
 
-**Stop copying framework code. Start understanding how agents actually work.**
-
-## 🚀 What Makes This Course Different?
-
-Most AI courses teach you to use LangChain or LlamaIndex. You copy-paste code that works until it doesn't. When things break, you're stuck because **you never learned the fundamentals**.
-
-This course is different:
-
-✅ **No frameworks** - Pure Python + OpenAI API (understand what's really happening)
-✅ **Industry-standard patterns** - Based on [Anthropic's "Building Effective Agents"](https://www.anthropic.com/engineering/building-effective-agents) research
-✅ **Production-ready** - Real error handling, cost tracking, optimization strategies
-✅ **Visual learning** - Mermaid diagrams throughout every key concept
-✅ **Self-contained lessons** - Jump to any topic or follow sequentially
-
-**[📖 Read the full landing page →](./LANDING.md)**
-
-## 💡 Why Learn from Scratch?
+Why learn from scratch?
 
 When you understand first principles, you can:
+- Build most AI systems without needing frameworks (just simple code)
 - Build with **any** framework (or create your own)
-- Debug mysterious issues at 2am with confidence
-- Make architecture decisions based on understanding, not guessing
-- Never be blocked by incomplete documentation
+- Build deeper understanding of how things actually work
 
-Frameworks hide complexity. We embrace transparency.
-
-## 🧠 The Core Insight
-
-> **"Agents are models using tools in a loop."**
-
-This memorable definition (from Anthropic research) captures everything:
-- **Models**: LLMs provide reasoning and decision-making
-- **Tools**: Functions that interact with the real world
-- **Loop**: Continuous observe → decide → act → update cycle
-
-Everything else—memory, planning, multi-agent systems—is refinement of this core pattern.
-
-## 🎯 What You'll Learn
-
-### Foundations
-- **OpenAI Responses API** (the modern way to call LLMs)
-- **ConversationMemory** helper for managing context
-- **Structured outputs** with Pydantic for type-safe responses
-- **Tool calling** with the @tool decorator pattern
-
-### The 5 Workflow Patterns (from Anthropic)
-1. **Prompt Chaining** - Sequential pipelines with `WorkflowState`
-2. **Routing** - Conditional branching to specialized handlers
-3. **Parallelization** - Concurrent execution for speed
-4. **Orchestrator-Workers** - Dynamic task decomposition
-5. **Evaluator-Optimizer** - Generate-evaluate-refine loops
-
-### Agent Architecture
-- **Tool calling** - Give AI the ability to take actions
-- **Agent loops** - Multi-step reasoning that decides what to do next
-- **Memory management** - Conversation history and context
-- **RAG systems** - Vector search with ChromaDB
-- **Production deployment** - FastAPI with streaming
-
-### When to Use What
-- **Workflows vs Agents** - The critical architectural decision
-- **WorkflowState vs ConversationMemory** - Managing different types of state
-- **Cost optimization** - Token counting and model selection
-
-## 📚 Course Structure
+## Course Structure
 
 ### Foundations (1-4)
-1. **[01-api-basics](./01-api-basics)** - Your first API call to OpenAI
+1. **[01-api-basics](./01-api-basics)** - Master making API calls to LLM providers
 2. **[02-conversation-memory](./02-conversation-memory)** - Maintaining context across turns
 3. **[03-structured-output](./03-structured-output)** - Type-safe responses with Pydantic
-4. **[04-tool-calling](./04-tool-calling)** - Give AI the ability to use tools (basic.py and advanced.py)
+4. **[04-tool-calling](./04-tool-calling)** - Give AI the ability to do real work
 
 ### Workflows & Agents (5-6)
 5. **[05-workflow-patterns](./05-workflow-patterns)** - 5 fundamental patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer) 📊
@@ -80,17 +23,11 @@ Everything else—memory, planning, multi-agent systems—is refinement of this 
 
 ### Advanced (7-8)
 7. **[07-advanced-memory](./07-advanced-memory)** - Token limits, trimming, Redis persistence, and managed alternatives (mem0)
-8. **[08-example-faq-agent](./08-example-faq-agent)** - FAQ agent with RAG (vector search)
-
-### Complete Examples (9-11)
-9. **[09-example-research-assistant](./09-example-research-assistant)** - Multi-tool research agent
-10. **[10-planning-react](./10-planning-react)** - ReAct pattern (Reasoning + Acting)
-11. **[11-fastapi-deployment](./11-fastapi-deployment)** - Deploy your agent with FastAPI
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.10+
+- Python 3
 - [UV package manager](https://docs.astral.sh/uv/) (recommended) or pip
 - OpenAI API key
 - Basic Python knowledge (functions, classes, type hints)
@@ -104,12 +41,6 @@ This repository uses UV for fast, reliable dependency management. Each lesson is
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Or with pip
-pip install uv
 ```
 
 #### Set up your API key
@@ -118,30 +49,6 @@ pip install uv
 # Create .env file in the root directory
 echo "OPENAI_API_KEY=your-key-here" > .env
 ```
-
-### Usage
-
-Each lesson is self-contained with:
-- **README.md** - Tutorial and explanations
-- **example.py** - Working code you can run
-- **pyproject.toml** - Dependencies and project metadata
-- **requirements.txt** - Legacy pip dependencies (for reference)
-
-Start with lesson 01 and work your way through sequentially.
-
-```bash
-# Navigate to any lesson
-cd 01-api-basics
-
-# Install dependencies and run (UV creates isolated environment automatically)
-uv run example.py
-
-# Or install dependencies explicitly first
-uv sync
-uv run python example.py
-```
-
-Each lesson has its own isolated environment, so you can work through them independently without dependency conflicts.
 
 ## 💡 Learning Path
 
@@ -157,173 +64,10 @@ Start at lesson 01 and work through each lesson in order.
 ### If you want to see working agents:
 Check out lessons 08-11 for complete, production-ready examples.
 
-## 🎓 Key Concepts
-
-### Workflows vs Agents: The Critical Distinction
-
-**Workflows (Lesson 05):**
-- **YOU** define the execution flow
-- Deterministic paths (outline → draft → polish)
-- Use `WorkflowState` dataclass for intermediate results
-- Like assembly lines with fixed stations
-
-**Agents (Lesson 06+):**
-- **LLM** decides the execution flow dynamically
-- Non-deterministic reasoning (agent chooses tools)
-- Use `ConversationMemory` for conversational context
-- Like consultants who decide their approach
-
-📊 **[See visual comparison diagram →](./05-workflow-patterns/README.md)**
-
-### Production-Ready from Day 1
-Every example includes:
-- Error handling (rate limits, network failures)
-- Type validation with Pydantic
-- Token counting for cost tracking
-- Performance optimization strategies
-- Clear visual diagrams explaining flows
-
-### When to Use What
-
-| Pattern | Use Case | Example | Lesson |
-|---------|----------|---------|--------|
-| **Simple Prompting** | One-off tasks, no external data | Code review, summarization | 01 |
-| **Conversation Memory** | Multi-turn dialogue | Chatbots, assistants | 02 |
-| **Structured Output** | Extract data, need type safety | Parse emails, extract entities | 03 |
-| **Tool Calling** | Need to take actions, call APIs | Weather bot, calculator | 04 |
-| **Prompt Chaining** | Sequential transformations | Content pipeline (outline → draft → polish) | 05 |
-| **Routing** | Different queries need different handling | Customer support triage | 05 |
-| **Parallelization** | Independent concurrent tasks | Bulk email classification | 05 |
-| **Orchestrator-Workers** | Complex tasks needing decomposition | Research assistant breaking down topics | 05 |
-| **Evaluator-Optimizer** | Quality control & iterative refinement | Code generation with review | 05 |
-| **Agent Architecture** | Multi-step reasoning, tool chaining | Autonomous research, booking agent | 06 |
-| **Advanced Memory** | Token limits, Redis persistence, managed services | Long conversations, production apps | 07 |
-| **RAG** | Need to search knowledge base | FAQ bot, documentation assistant | 08 |
-
-## 📖 Course Philosophy
-
-1. **First Principles**: Understand the "why" behind every pattern
-2. **Industry-Standard**: Aligned with [Anthropic's research](https://www.anthropic.com/engineering/building-effective-agents)
-3. **Visual Learning**: Mermaid diagrams for every key concept 📊
-4. **Production-Ready**: Real error handling, cost tracking, optimization
-5. **Progressive Complexity**: Each lesson builds on the previous
-6. **Self-Contained**: Jump to any lesson or follow sequentially
-7. **Framework-Agnostic**: Once you know fundamentals, use any framework
-
-**Cost to complete:** ~$1-2 in OpenAI credits (using `gpt-4o-mini`)
-**Time investment:** 6-10 hours total
-**Value:** Understanding that will serve your entire AI career
-
-## 🛠️ Tech Stack
-
-- **UV**: Fast, modern Python package manager
-- **OpenAI API**: GPT-4 and GPT-3.5 models
-- **Pydantic**: Type validation and schema generation
-- **ChromaDB**: Vector database for RAG
-- **Python-dotenv**: Environment variable management
-
-No LangChain, no LlamaIndex, no agent frameworks—just the fundamentals.
-
-## 📝 What You'll Build
-
-By the end of this course, you'll have built:
-
-**Workflow Patterns:**
-- ✅ Content generation pipeline (chaining)
-- ✅ Customer support router (routing)
-- ✅ Bulk email classifier (parallelization)
-- ✅ Research assistant (orchestrator-workers)
-- ✅ Code generator with review (evaluator-optimizer)
-
-**Agent Systems:**
-- ✅ Multi-tool weather agent (tool calling)
-- ✅ Autonomous reasoning agent (agent loop)
-- ✅ FAQ bot with RAG (vector search + ChromaDB)
-- ✅ Research assistant (multi-tool coordination)
-- ✅ ReAct agent (planning + reasoning)
-
-**Production Deployment:**
-- ✅ FastAPI web service with streaming
-- ✅ Stateful conversation management
-- ✅ Error handling and cost tracking
-
-**Most Importantly:**
-- ✅ Understanding of workflows vs agents
-- ✅ Knowledge of when to use each pattern
-- ✅ Skills to build any AI agent from scratch
-- ✅ Confidence to debug and optimize agents
-
-## 🎁 Bonus: Your Own Agent Framework
-
-By completing this course, you'll build **`agents.py`** - a lightweight framework containing the patterns you learned:
-
-```python
-from agents import Agent, Tool, ConversationMemory
-
-# Define your tools
-tool = Tool(your_function)  # Auto-generates schema!
-
-# Create agent
-agent = Agent(instructions="You are a helpful assistant")
-agent.register_tool(tool)
-
-# Use it
-response = agent.chat("Your question here")
-```
-
-**What's included:**
-- ✅ `Agent` - Reusable agent with tool calling loop
-- ✅ `Tool` - Automatic OpenAI schema generation
-- ✅ `ConversationMemory` - Multi-turn dialogue management
-
-Unlike LangChain (100K+ lines), this is ~400 lines of code **you understand completely** because you built it.
-
-**[📖 Read the framework guide →](./AGENTS_FRAMEWORK.md)**
-
-## 🤝 Contributing
+## Contributing
 
 Found an issue or want to improve an example? PRs welcome!
 
-## 📄 License
+## License
 
 MIT License - feel free to use this code for learning and in your own projects.
-
-## 🔗 Resources
-
-**Course Materials:**
-- [📖 Full Landing Page](./LANDING.md) - Complete course overview
-- [🎁 Agents Framework Guide](./AGENTS_FRAMEWORK.md) - Your lightweight framework built from the course
-- [📣 Promotional Materials](./PROMO.md) - Social media posts, email templates, etc.
-- [🤖 CLAUDE.md](./CLAUDE.md) - Architecture guide for AI assistants
-
-**External Documentation:**
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
-- [Pydantic Documentation](https://docs.pydantic.dev)
-- [ChromaDB Documentation](https://docs.trychroma.com)
-
-## ⭐ Support This Project
-
-If you find this course valuable:
-- ⭐ **Star this repository** to show your support
-- 🐛 **Report issues** or contribute improvements
-- 📣 **Share with your network** - help others discover it
-- 💬 **Give feedback** - what worked? what didn't?
-
-## 🎓 Who This Is For
-
-✅ Backend engineers adding AI to their stack
-✅ ML engineers building production systems
-✅ Technical leaders evaluating AI architectures
-✅ Career switchers transitioning to AI engineering
-
-**Prerequisites:** Python proficiency + basic API knowledge. No ML/AI experience required.
-
----
-
-**Ready to master AI agents?**
-
-🚀 **[Start with Lesson 01: API Basics →](./01-api-basics)**
-📖 **[Read the full landing page →](./LANDING.md)**
-
-*Stop copying framework code. Start understanding how agents actually work.*

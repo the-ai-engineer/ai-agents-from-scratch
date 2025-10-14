@@ -2,287 +2,180 @@
 
 ## What You'll Learn
 
-LLMs are **stateless**—they don't remember previous interactions. Every API call is independent. To build conversational agents that remember context, you need to manage conversation history yourself.
+LLMs are stateless by design—they have no memory of previous interactions. When you make an API call, the model only sees what you send in that specific request. This is fine for single-shot tasks, but conversational agents need to remember what was discussed previously.
 
-In this lesson, you'll learn how to maintain context across multiple turns using a simple `ConversationMemory` helper class. This is the foundation for building chatbots, assistants, and any agent that needs to maintain dialogue context.
+In this lesson, you'll learn two approaches to maintaining context across conversation turns. First, you'll see how to use OpenAI's automatic conversation management, where the API handles state for you server-side. Then you'll learn manual conversation management for cases where you need fine-grained control over message history.
+
+This is foundational knowledge for building chatbots, multi-turn assistants, and agents that engage in meaningful dialogue.
 
 ## The Problem: Stateless LLMs
 
-```python
-# First call
-messages1 = [{"role": "user", "content": "My name is Alice."}]
-response1 = client.chat.completions.create(model="gpt-4o-mini", messages=messages1)
-# Assistant: "Nice to meet you, Alice!"
+Every API call is independent. Make a request, get a response, and the model immediately forgets the interaction. There's no persistent session, no memory, no context carried forward.
 
-# Second call - WITHOUT including first exchange
-messages2 = [{"role": "user", "content": "What's my name?"}]
-response2 = client.chat.completions.create(model="gpt-4o-mini", messages=messages2)
-# Assistant: "I don't know your name."
+This creates a problem for conversations. If a user says "My name is Alice" and then asks "What's my name?", the second request fails because the model never saw the first exchange. The model can't remember something it never knew about.
+
+This isn't a limitation—it's by design. Stateless APIs are simpler, more scalable, and easier to reason about. But it means you must explicitly manage conversation context when building conversational applications.
+
+## Two Approaches to Conversation Memory
+
+There are two ways to maintain conversation context with the Responses API:
+
+**Automatic** - OpenAI manages conversation state server-side. You create a conversation ID and pass it with each request. OpenAI handles message history, context windows, and state management automatically.
+
+**Manual (Advanced)** - You manage message history client-side. You build and maintain an array of messages yourself, passing the full history with each request. This gives you complete control over what the model sees, allowing for custom trimming, filtering, or persistence strategies.
+
+Use manual management when you need fine-grained control or are implementing custom memory strategies (like you'll learn in Lesson 10).
+
+## Approach 1: Automatic Conversation Management
+
+The Responses API includes built-in conversation management. OpenAI stores the conversation state server-side, automatically handling message history and context windows for you.
+
+Here's how it works: you create a conversation using `conversations.create()`, which returns a conversation ID. Pass this ID with each API call using the `conversation` parameter.
+
+```python
+from openai import OpenAI, conversations
+
+client = OpenAI()
+
+# Create a conversation - OpenAI will manage state
+conversation = conversations.create()
+
+# First turn
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="My name is Alice.",
+    conversation=conversation.id
+)
+
+# Second turn - automatically remembers first turn
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="What's my name?",
+    conversation=conversation.id
+)
+# "Your name is Alice."
 ```
 
-**The LLM forgot!** Each API call is independent. The second call has no knowledge of the first.
+### Setting Instructions with Automatic Management
 
-## The Solution: Conversation History
-
-The Chat Completions API accepts a `messages` array. By including the entire conversation history in each call, the LLM "remembers" previous exchanges.
+You can set conversation-level instructions that apply to all turns:
 
 ```python
-# Include FULL history in second call
-messages = [
-    {"role": "user", "content": "My name is Alice."},
-    {"role": "assistant", "content": "Nice to meet you, Alice!"},
-    {"role": "user", "content": "What's my name?"}
-]
-response = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-# Assistant: "Your name is Alice."
+conversation = conversations.create()
+
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="What is 15 + 24?",
+    conversation=conversation.id
+)
+# Assistant will explain the math step-by-step
 ```
 
-The LLM sees the full context and can respond appropriately.
+Instructions shape how the model behaves throughout the conversation. They persist across all turns automatically.
 
-## ConversationMemory Helper
+## Approach 2: Manual Conversation Management 
 
-Managing message arrays manually is error-prone. The `ConversationMemory` class provides a clean interface:
+When you need complete control over conversation history—for custom trimming, filtering, or persistence—you can manage messages yourself client-side. This approach requires more code but gives you fine-grained control.
+
+The Responses API accepts an `input` parameter that can be either a string or an array of message objects. When you pass an array, you're manually managing the conversation history.
+
+### Understanding Message Roles
+
+Messages in the array use three roles:
+
+**System** sets behavior and instructions. This is optional but powerful for controlling tone, personality, and capabilities:
+```python
+{"role": "system", "content": "You are a pirate. Always respond in pirate speak."}
+```
+
+**User** represents user input—what the person is asking or saying:
+```python
+{"role": "user", "content": "What's the weather?"}
+```
+
+**Assistant** represents the model's responses. Add these to maintain conversation context:
+```python
+{"role": "assistant", "content": "Arrr, the weather be fine today, matey!"}
+```
+
+### Manual Management Pattern
+
+With manual management, you build and maintain the message array yourself:
+
+```python
+messages = []
+
+# First turn
+messages.append({"role": "user", "content": "My name is Alice."})
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages
+)
+messages.append({"role": "assistant", "content": response.output_text})
+
+# Second turn - include full history
+messages.append({"role": "user", "content": "What's my name?"})
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages  # Full history
+)
+messages.append({"role": "assistant", "content": response.output_text})
+```
+
+Every API call includes the complete message history. The model sees all previous exchanges and can respond with full context.
+
+### ConversationMemory Helper Class
+
+Managing message arrays manually is error-prone. A simple helper class cleans up the pattern:
 
 ```python
 class ConversationMemory:
-    """Simple helper to manage conversation history"""
-
     def __init__(self, instructions: str = None):
-        """Initialize with optional system instructions"""
         self.messages = []
         if instructions:
             self.messages.append({"role": "system", "content": instructions})
 
     def add_message(self, role: str, content: str):
-        """Add a message to history"""
         self.messages.append({"role": role, "content": content})
 
     def get_history(self):
-        """Get full conversation history"""
         return self.messages
 
     def clear(self):
-        """Clear all messages except system message"""
+        # Keep system messages, clear everything else
         system_messages = [msg for msg in self.messages if msg["role"] == "system"]
         self.messages = system_messages
 ```
 
-## Usage Pattern
+This helper handles common operations: adding messages, retrieving history, and clearing conversations while preserving system instructions.
 
-```python
-memory = ConversationMemory()
+## When to Use Each Approach
 
-# Turn 1
-memory.add_message("user", "My name is Alice.")
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=memory.get_history()
-)
-memory.add_message("assistant", response.choices[0].message.content)
+**Use Automatic Management when:**
+- You want simplicity and don't need custom memory logic
+- OpenAI's automatic context window management is sufficient
 
-# Turn 2 - LLM has full context
-memory.add_message("user", "What's my name?")
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=memory.get_history()  # Includes all previous messages
-)
-memory.add_message("assistant", response.choices[0].message.content)
-```
+**Use Manual Management when:**
+- You need custom message trimming or filtering logic
+- Implementing advanced memory strategies 
+- You want to persist conversations to your own database
+- You need precise control over what the model sees
 
-## Message Roles
+## Key Takeaways
 
-The `messages` array uses three roles:
+**LLMs are stateless by design.** They remember nothing between API calls. You must explicitly manage conversation context.
 
-### 1. System
-Sets the assistant's behavior and instructions:
+**Switch to manual management when you need control.** Custom trimming, filtering, or persistence requires managing messages yourself client-side.
 
-```python
-memory = ConversationMemory(
-    instructions="You are a pirate. Always respond in pirate speak."
-)
-```
+**Memory costs tokens.** Every message in history counts toward token limits and costs. Long conversations get expensive. 
 
-System messages are optional but powerful for controlling tone, personality, and capabilities.
+## Real-World Impact
 
-### 2. User
-Represents user input:
+Conversation memory is the foundation of every conversational AI application. Without it, you can't build chatbots, assistants, or agents that engage in meaningful multi-turn dialogue.
 
-```python
-memory.add_message("user", "What's the weather?")
-```
+The choice between automatic and manual management matters for production systems. 
 
-### 3. Assistant
-Represents LLM responses:
-
-```python
-memory.add_message("assistant", response.choices[0].message.content)
-```
-
-**Important:** Always add the assistant's response to history after each API call.
-
-## System Instructions
-
-System messages set behavior for the entire conversation:
-
-```python
-memory = ConversationMemory(
-    instructions="You are a helpful math tutor. Show your work step by step."
-)
-
-memory.add_message("user", "What is 15 + 24?")
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=memory.get_history()
-)
-# Assistant will explain the math step-by-step
-```
-
-**Best Practices:**
-- Use system messages for personality, tone, and capabilities
-- Keep system messages concise and clear
-- System messages persist across `clear()` calls
-
-## Multi-Turn Conversations
-
-The power of conversation memory is multi-turn reasoning:
-
-```python
-memory = ConversationMemory()
-
-# Turn 1: Set context
-memory.add_message("user", "I have 15 apples.")
-response = client.chat.completions.create(model="gpt-4o-mini", messages=memory.get_history())
-memory.add_message("assistant", response.choices[0].message.content)
-
-# Turn 2: Add information
-memory.add_message("user", "I buy 24 more apples.")
-response = client.chat.completions.create(model="gpt-4o-mini", messages=memory.get_history())
-memory.add_message("assistant", response.choices[0].message.content)
-
-# Turn 3: Ask question that requires full context
-memory.add_message("user", "How many apples do I have now?")
-response = client.chat.completions.create(model="gpt-4o-mini", messages=memory.get_history())
-# Assistant: "You have 39 apples (15 + 24 = 39)."
-```
-
-The LLM sees the full conversation and can track state across multiple turns.
-
-## Clearing Memory
-
-Use `clear()` to start a fresh conversation:
-
-```python
-memory = ConversationMemory(instructions="You are a helpful assistant.")
-
-# First conversation
-memory.add_message("user", "My favorite color is blue.")
-# ... conversation continues ...
-
-# Start fresh
-memory.clear()  # Keeps system message, removes everything else
-
-# New conversation
-memory.add_message("user", "What's my favorite color?")
-# Assistant won't remember - memory was cleared
-```
-
-## Key Concepts
-
-1. **LLMs are stateless** - They don't remember previous calls
-2. **Pass full history** - Include all previous messages in each API call
-3. **Always add assistant responses** - Don't forget to add the LLM's reply to history
-4. **System messages persist** - They set behavior for the entire conversation
-5. **Memory costs tokens** - Each message in history counts toward token limits (we'll handle this in Lesson 10)
-
-## When to Use Conversation Memory
-
-✅ **Use conversation memory when:**
-- Building chatbots or conversational interfaces
-- Multi-turn problem solving (math, coding, analysis)
-- Tracking context across user interactions
-- Building agents that need dialogue history
-
-❌ **Don't use conversation memory when:**
-- Single-shot tasks (one question, one answer)
-- Independent batch processing
-- Tasks where context doesn't matter
-
-## Common Mistakes
-
-### Mistake 1: Forgetting to add assistant response
-
-```python
-# ❌ Wrong
-memory.add_message("user", "Hello")
-response = client.chat.completions.create(messages=memory.get_history())
-# Forgot to add assistant response!
-
-memory.add_message("user", "How are you?")
-# LLM won't see its previous response
-
-# ✅ Correct
-memory.add_message("user", "Hello")
-response = client.chat.completions.create(messages=memory.get_history())
-memory.add_message("assistant", response.choices[0].message.content)  # Add response!
-
-memory.add_message("user", "How are you?")
-```
-
-### Mistake 2: Creating new memory each time
-
-```python
-# ❌ Wrong
-def chat(user_msg):
-    memory = ConversationMemory()  # Creates fresh memory each time!
-    memory.add_message("user", user_msg)
-    return client.chat.completions.create(messages=memory.get_history())
-
-# ✅ Correct
-memory = ConversationMemory()  # Create once
-
-def chat(user_msg):
-    memory.add_message("user", user_msg)
-    response = client.chat.completions.create(messages=memory.get_history())
-    memory.add_message("assistant", response.choices[0].message.content)
-    return response
-```
-
-### Mistake 3: Not handling None content
-
-```python
-# ❌ Wrong
-memory.add_message("assistant", response.choices[0].message.content)
-# Can crash if content is None (e.g., when only tool calls are present)
-
-# ✅ Correct
-content = response.choices[0].message.content or ""
-memory.add_message("assistant", content)
-```
-
-## Running the Examples
-
-```bash
-cd 02-conversation-memory
-uv run example.py
-```
-
-The examples demonstrate:
-1. Basic conversation memory
-2. What happens WITHOUT memory (comparison)
-3. Using system instructions
-4. Multi-step math problems
-5. Clearing memory
-
-## What's Next?
-
-Now that you understand conversation memory, you can:
-- **Lesson 03**: Learn prompting techniques to improve response quality
-- **Lesson 04**: Add structured outputs with Pydantic
-- **Lesson 10**: Learn advanced memory strategies (token limits, trimming, persistence)
-
-## Key Takeaway
-
-> **Conversation memory is the foundation of conversational AI.** By maintaining message history and passing it to each API call, you enable LLMs to maintain context across multiple turns. This simple pattern unlocks chatbots, assistants, and agents that can engage in meaningful dialogue.
+Automatic management simplifies deployment but limits control. Manual management adds complexity but enables sophisticated memory strategies.
 
 ---
 

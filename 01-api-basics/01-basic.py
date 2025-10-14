@@ -20,10 +20,16 @@ response = client.responses.create(
     instructions="You are a helpful Python programming assistant.",
     input="Explain what async/await does in Python in 2 sentences.",
     temperature=0,
+    store=True,
 )
 
-# response.model_dump()
 # response.output_text)
+
+##=================================================##
+## Example 2: Understanding responses and costs
+##=================================================##
+
+response.model_dump()
 
 ##=================================================##
 ## Example 2: Streaming responses for better UX
