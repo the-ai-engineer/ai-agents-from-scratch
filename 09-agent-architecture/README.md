@@ -1,235 +1,263 @@
-# Building Autonomous Agents
+# Building an AI Agent from Scratch
 
 ## What You'll Learn
 
-In this lesson, you'll build autonomous agents that can use tools in a loop to solve complex, multi-step problems.
+Build a complete autonomous AI agent from scratch in this hands-on tutorial.
 
 By the end, you'll understand:
 - The agent loop pattern that powers all autonomous agents
-- How to implement multi-step reasoning with tool chaining
-- Building a reusable Agent class for production use
-- Clean API design for agent systems
+- How to build a reusable Agent class
+- Why conversation history enables multi-step reasoning
+- How agents make autonomous decisions
 
-This is the foundation of agent autonomy. Every advanced agent system—from research assistants to coding bots—runs on this pattern.
+This is **the** foundational pattern. Every advanced agent system—from ChatGPT to coding assistants—uses this core concept.
+
+## The Core Concept
+
+> **"Agents are models using tools in a loop"**
+
+That's it. This simple pattern is the foundation of agent autonomy.
 
 ## The Problem
 
-Single-step tool calling is limited. When a user asks "What's the weather in Paris and what time is it there?", a single-step system picks ONE tool to call—either weather OR time—then stops. It can't complete the full task.
+Basic tool calling only works for single-step tasks. Ask "What's the weather in Paris and what time is it there?" and you're stuck—you can only call ONE tool per request.
 
-Real-world problems require multiple steps:
+Real tasks need multiple steps:
 - Gathering information from multiple sources
-- Using one tool's output as input to another tool
-- Making sequential decisions based on previous results
-- Combining information to form complete answers
+- Using one result as input to another tool
+- Making decisions based on what you learn
+- Combining information into a final answer
 
-You need agents that can think through problems step-by-step, automatically.
+You need **autonomous agents** that can work through problems step-by-step.
 
-## The Agent Loop Pattern
+## The Solution: The Agent Loop
 
-> **"Agents are models using tools in a loop"**
->
-> This simple definition captures the essence of autonomous agents. Everything else is refinement of this core pattern.
-
-The agent loop is simple but powerful. Instead of calling the API once, you loop until the agent has a final answer:
-
-```mermaid
-graph TD
-    A[👤 User Query] --> B[📚 Initialize Conversation History]
-    B --> C[🤖 Send to LLM with Tools]
-
-    C --> D{LLM Decision}
-
-    D -->|Needs Tools| E[🔧 Execute Tool Calls]
-    E --> F[📝 Add Results to History]
-    F --> G{Max Iterations?}
-    G -->|No| C
-    G -->|Yes| H[⚠️ Stop: Iteration Limit]
-
-    D -->|Final Answer| I[✅ Return Response to User]
-
-    style A fill:#e8f5e9
-    style C fill:#fff9c4
-    style D fill:#ffe0b2
-    style E fill:#e1f5ff
-    style F fill:#e1f5ff
-    style I fill:#c8e6c9
-    style H fill:#ffcdd2
-```
-
-**The core flow:**
-
-1. Send user message + available tools to LLM
-2. LLM decides: "I need to call tools" OR "I have the final answer"
-3. If tools called:
-   - Execute all tool calls
-   - Add results to conversation history
-   - Go back to step 1
-4. If no tools called:
-   - Return final answer to user
-
-The key insight: the LLM sees the tool results and can decide what to do next. Need more information? Call another tool. Ready to answer? Return text.
-
-**Why conversation history matters:**
-
-After each tool execution, you append:
-1. The LLM's message (including tool calls)
-2. The tool results
-
-When the LLM sees the history on the next iteration, it understands what it already tried and what information it now has. This enables multi-step reasoning.
-
-## The Agent Class
-
-Rather than implementing this loop manually every time, we'll build a reusable `Agent` class that handles all the complexity:
+Instead of calling the LLM once, **loop until you have a final answer**:
 
 ```python
-# Simple public interface
-agent = Agent(
-    system_prompt="You are a helpful assistant",
-    tools=[get_weather, calculate]
-)
+messages = [{"role": "user", "content": "What's the weather in Paris?"}]
 
-response = agent.chat("What's the weather in Tokyo?")
+for iteration in range(max_iterations):
+    # 1. Call LLM with tools
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input=messages,
+        tools=tool_schemas
+    )
+
+    # 2. Process response
+    for item in response.output:
+        if item.type == "message":
+            # Got final answer!
+            return item.content[0].text
+
+        elif item.type == "function_call":
+            # LLM wants to use a tool
+            # Add function call to history
+            messages.append({
+                "type": "function_call",
+                "call_id": item.call_id,
+                "name": item.name,
+                "arguments": item.arguments,
+            })
+
+            # Execute tool
+            result = execute_tool(item)
+
+            # Add result to history
+            messages.append({
+                "type": "function_call_output",
+                "call_id": item.call_id,
+                "output": result,
+            })
+            # Loop continues...
 ```
 
-Behind the scenes, the class handles:
-- Running the agent loop
-- Executing tool calls
-- Managing conversation history
-- Preventing infinite loops
-- Error handling
+**The magic:** After each tool execution, you add the results to conversation history. When the LLM sees the updated history, it knows what information it has and can decide the next step.
 
-### Agent Class Architecture
+The LLM orchestrates everything—you just provide tools and run the loop.
+
+## The Tutorial
+
+`tutorial.py` walks you through building a complete Agent class from scratch:
+
+**What You'll Build:**
 
 ```python
-class Agent:
-    """Autonomous agent with tool-calling capabilities."""
+# Your Agent class
+agent = Agent()
+agent.add_tool(get_weather)
+agent.add_tool(get_time)
 
-    def __init__(
-        self,
-        model: str = "gpt-4o-mini",
-        max_iterations: int = 5,
-        system_prompt: Optional[str] = None,
-        tools: Optional[list[Callable]] = None,
-    ):
-        """Initialize with configuration."""
-        self.client = OpenAI()
-        self.model = model
-        self.max_iterations = max_iterations
-        self.memory = ConversationMemory(system_prompt=system_prompt)
-        self.tools: dict[str, Callable] = {}
-
-        if tools:
-            self.register_tools(*tools)
-
-    # Public API
-    def chat(self, message: str) -> str:
-        """Send a message and get a response."""
-        # Agent loop implementation (shown in code examples)
-        pass
-
-    def register_tool(self, func: Callable) -> None:
-        """Register a tool function."""
-        pass
-
-    def reset(self) -> None:
-        """Clear conversation history."""
-        pass
+# Use it - the loop happens automatically!
+response = agent.run("What's the weather and time in Tokyo?")
 ```
 
-### Key Design Principles
+**The tutorial covers:**
+1. **Tool registration** - How to let agents use your functions
+2. **Tool schemas** - Converting Python functions to OpenAI format
+3. **The agent loop** - The core pattern in detail
+4. **Conversation history** - Why it enables multi-step reasoning
+5. **Error handling** - Graceful failures
+6. **Four examples** - From simple to complex
 
-**1. Simple Public Interface**
-- `chat()` - Send message, get response
-- `register_tool()` - Add tools
-- `reset()` - Clear history
+**You'll build:**
+- Complete Agent class (~180 lines)
+- Tool registry system
+- Conversation management
+- Autonomous decision making
 
-**2. Flexible Configuration**
-- Pass tools at construction OR register later
-- Configure model, iterations, and prompts
-- Sensible defaults for everything
-
-**3. Clean State Management**
-- ConversationMemory encapsulates history
-- Tools stored in dictionary for fast lookup
-- Easy to extend with custom state
-
-## Running the Example
+## Running the Tutorial
 
 ```bash
-cd 09-agent-architecture
-uv run example.py
+uv run python 09-agent-architecture/tutorial.py
 ```
 
-You'll see:
-- Clean Agent class implementation
-- Tool registration with @tool decorator
-- Multi-step reasoning examples
-- How conversation history enables tool chaining
+You'll see 4 examples:
+1. **Single tool** - Basic agent usage
+2. **Multiple tools** - Calling several tools in one query
+3. **Conversation** - Multi-turn dialogue with context
+4. **Tool chaining** - Agent orchestrating multiple tool calls
 
-## Key Takeaways
+## Key Concepts
 
-1. **Agents are models using tools in a loop** - This simple pattern powers all autonomous agents
+### 1. The Agent Loop
 
-2. **Conversation history enables reasoning** - The LLM sees past tool calls and results, allowing multi-step problem solving
+```
+User message → Call LLM → Tool calls?
+                          ↓ Yes
+                Execute tools → Add to history → Loop back
+                          ↓ No
+                Return answer ✓
+```
 
-3. **Max iterations prevent infinite loops** - Always set a limit. If the agent can't solve the problem in N steps, stop gracefully
+### 2. Conversation History is Critical
 
-4. **Tool results become context** - Each tool result becomes input for the next LLM decision
+Every interaction is stored:
+- User messages
+- Assistant responses
+- **Function calls themselves**
+- Function call outputs
 
-5. **The LLM orchestrates** - You don't write if-then logic. The LLM decides which tools to call and when to stop
+The LLM sees the full history and decides what to do next based on what it already knows.
 
-6. **Simple API, hidden complexity** - Users call `chat()` and `register_tool()`. The loop is hidden
+### 3. Function Call History Format
+
+**CRITICAL:** You must add BOTH the function call AND its output:
+
+```python
+# Step 1: Add function call
+messages.append({
+    "type": "function_call",
+    "call_id": item.call_id,
+    "name": item.name,
+    "arguments": item.arguments,
+})
+
+# Step 2: Execute function
+result = execute_tool(item)
+
+# Step 3: Add output
+messages.append({
+    "type": "function_call_output",
+    "call_id": item.call_id,
+    "output": result,
+})
+```
+
+Skip step 1 and you get a 400 error from OpenAI.
+
+### 4. Max Iterations Prevents Infinite Loops
+
+Always set a limit (typically 5-10 iterations). If the agent can't solve the problem in N steps, fail gracefully.
+
+### 5. The LLM Orchestrates
+
+You don't write if-then logic. The LLM:
+- Decides which tools to call
+- Determines when it has enough information
+- Chooses when to give a final answer
+
+You just provide tools and run the loop.
+
+## From Tutorial to Production
+
+After completing `tutorial.py`, compare your Agent with `src/agent_sync.py`:
+
+```bash
+# Your tutorial agent
+less 09-agent-architecture/tutorial.py
+
+# Production agent
+less src/agent_sync.py
+```
+
+You'll see they're nearly identical! The main differences:
+- `AgentSync` has type hints and documentation
+- Handles structured outputs (Pydantic models)
+- More robust error handling
+- Better tool schema generation
+
+**The core loop is the same.** You just built a production-ready agent pattern!
 
 ## Common Pitfalls
 
-1. **Forgetting max iterations** - Infinite loops happen. Always set a limit.
-
-2. **Not adding tool results to history** - If you execute tools but don't add results to conversation history, the LLM can't use them.
-
-3. **Making configuration required** - Provide sensible defaults. Users should be able to create an agent with `Agent()`.
-
-4. **Not validating tool functions** - Check that registered tools have the `@tool` decorator. Fail fast with clear errors.
-
-5. **Mixing concerns** - Keep conversation management, tool execution, and API calls separate.
-
-## Real-World Impact
-
-The Agent class pattern enables:
-- **Rapid Development** - Build new agents in minutes
-- **Consistency** - All agents follow the same patterns and error handling
-- **Maintainability** - Fix a bug once in the class, all agents benefit
-- **Flexibility** - Customize behavior through configuration, not code changes
-
-Production systems from customer support bots to research assistants use this exact pattern. The specifics vary, but the core loop remains the same.
+1. **Forgetting max iterations** - Always set a limit
+2. **Not adding function calls to history** - Must add call BEFORE output
+3. **Not adding results to history** - LLM can't see tool results
+4. **Using wrong message format** - Responses API needs specific structure
+5. **Ignoring errors** - Always handle tool failures gracefully
 
 ## Assignment
 
-Build a research agent using the Agent class:
+Extend your agent with new capabilities:
 
-1. Create an agent with two tools:
-   - `search_web(query: str) -> str` - Simulates web search
-   - `summarize(text: str) -> str` - Summarizes text
+1. **Add a calculation tool:**
+   ```python
+   def calculate(expression: str) -> str:
+       """Evaluate a math expression."""
+       return str(eval(expression))
+   ```
 
-2. Test with questions that require multiple steps:
-   - "What are the latest developments in AI agents?"
-   - "Compare Python and JavaScript for web development"
-   - "What's the weather in Paris and what time is it there?"
+2. **Add a search tool:**
+   ```python
+   def search(query: str) -> str:
+       """Search for information."""
+       return f"Search results for: {query}"
+   ```
 
-3. Observe how the agent chains tools together:
-   - Searches for information
-   - Summarizes results
-   - Combines information into a final answer
+3. **Test multi-step queries:**
+   - "What's the weather in Paris and what is 25 * 48?"
+   - "Search for Python programming and tell me what time it is in Tokyo"
+   - "Check weather in 3 cities and tell me which is warmest"
 
-Bonus: Add a third tool and see how the agent uses it.
+4. **Observe:**
+   - How many iterations each query takes
+   - Which tools get called
+   - How the agent chains tools together
+
+## Key Takeaways
+
+1. **Agents are models using tools in a loop** - This is the entire pattern
+2. **Conversation history enables autonomy** - Past results inform future decisions
+3. **The LLM orchestrates** - You provide tools, LLM decides when to use them
+4. **Max iterations are essential** - Prevent infinite loops
+5. **Function call history is critical** - Must be added before outputs
+6. **Simple API, complex behavior** - Hide loop complexity behind clean interface
+7. **Production ready** - This pattern scales to real systems
 
 ## Next Steps
 
-You've mastered autonomous agent architecture. Now it's time to tackle the challenges of real-world agent systems.
+You've built an autonomous AI agent from scratch!
 
-Move to **Lesson 10: Advanced Memory** to learn how to handle token limits, implement automatic history trimming, persist conversations, and manage memory for production agents.
+**Move to Lesson 10: Advanced Memory** to learn:
+- Handling long conversations and token limits
+- Automatic history trimming
+- Conversation persistence
+- Production memory management
 
 ## Resources
 
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) - Research on agent patterns
-- [OpenAI Function Calling Guide](https://platform.openai.com/docs/guides/function-calling) - Official tool calling docs
-- [The Rise and Potential of Large Language Model Based Agents](https://arxiv.org/abs/2309.07864) - Academic survey
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/news/building-effective-agents) - Best practices for agent systems
+- [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses) - Official API documentation
+- [LLM Agents Survey](https://arxiv.org/abs/2309.07864) - Academic overview of agent architectures

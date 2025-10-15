@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 # Add parent directory to path to import agents framework
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from agents import Agent as BaseAgent
+from src.agent import Agent as BaseAgent
 
 load_dotenv()
 
@@ -39,7 +39,7 @@ class AgentWithMemory(BaseAgent):
         max_iterations: int = 5,
         max_history_tokens: int = 4000,
         system_prompt: Optional[str] = None,
-        tools: Optional[list[Callable]] = None
+        tools: Optional[list[Callable]] = None,
     ):
         """
         Initialize agent with memory management.
@@ -78,7 +78,9 @@ class AgentWithMemory(BaseAgent):
         if current_tokens <= self.max_history_tokens:
             return
 
-        print(f"Trimming history: {current_tokens} tokens > {self.max_history_tokens} limit")
+        print(
+            f"Trimming history: {current_tokens} tokens > {self.max_history_tokens} limit"
+        )
 
         # Keep system messages, remove oldest user/assistant messages
         items = self.memory.get_items()
@@ -86,7 +88,11 @@ class AgentWithMemory(BaseAgent):
         other_messages = [msg for msg in items if msg.get("role") != "system"]
 
         # Remove oldest messages until under limit
-        while self._count_tokens(system_messages + other_messages) > self.max_history_tokens and other_messages:
+        while (
+            self._count_tokens(system_messages + other_messages)
+            > self.max_history_tokens
+            and other_messages
+        ):
             other_messages.pop(0)
 
         # Rebuild memory with trimmed history
@@ -102,13 +108,13 @@ class AgentWithMemory(BaseAgent):
 
     def save_conversation(self, filepath: str):
         """Save conversation to JSON file"""
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(self.memory.get_items(), f, indent=2)
         print(f"Saved to {filepath}")
 
     def load_conversation(self, filepath: str):
         """Load conversation from JSON file"""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             self.memory.items = json.load(f)
         print(f"Loaded from {filepath}")
 
@@ -121,6 +127,7 @@ class AgentWithMemory(BaseAgent):
 # Usage Examples
 # ============================================================================
 
+
 def token_management_example():
     """Example 1: Token counting and automatic trimming"""
     print("=" * 60)
@@ -129,8 +136,7 @@ def token_management_example():
 
     # Create agent with low token limit to trigger trimming
     agent = AgentWithMemory(
-        max_history_tokens=500,
-        system_prompt="You are a helpful assistant."
+        max_history_tokens=500, system_prompt="You are a helpful assistant."
     )
 
     # Have a long conversation to demonstrate trimming
@@ -182,7 +188,7 @@ def redis_persistence_example():
 
     try:
         # Try to connect to Redis
-        r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
         r.ping()
     except (redis.ConnectionError, Exception) as e:
         print(f"Redis not available: {e}")
@@ -199,9 +205,12 @@ def redis_persistence_example():
     # Simulate saving messages
     conversation = [
         {"role": "user", "content": "My favorite color is blue"},
-        {"role": "assistant", "content": "I'll remember that your favorite color is blue!"},
+        {
+            "role": "assistant",
+            "content": "I'll remember that your favorite color is blue!",
+        },
         {"role": "user", "content": "I live in Tokyo"},
-        {"role": "assistant", "content": "Got it! You live in Tokyo."}
+        {"role": "assistant", "content": "Got it! You live in Tokyo."},
     ]
 
     r.setex(key, 86400, json.dumps(conversation))  # TTL: 24 hours
@@ -235,7 +244,9 @@ def mem0_semantic_memory_example():
         return
 
     print("\n=== Mem0 Semantic Memory ===\n")
-    print("Mem0 provides semantic search over memories, not just chronological storage.\n")
+    print(
+        "Mem0 provides semantic search over memories, not just chronological storage.\n"
+    )
 
     try:
         # Initialize Mem0 (uses local vector store by default)
@@ -253,7 +264,7 @@ def mem0_semantic_memory_example():
             "User is working on an e-commerce project with a $50,000 budget",
             "User's team uses React for frontend",
             "User mentioned they have a tight deadline - project due in 3 weeks",
-            "User is interested in implementing AI features"
+            "User is interested in implementing AI features",
         ]
 
         for mem in memories_to_add:

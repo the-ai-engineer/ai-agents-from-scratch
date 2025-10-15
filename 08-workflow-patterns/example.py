@@ -22,20 +22,21 @@ WORKFLOWS vs AGENTS:
 NEW: This lesson introduces a reusable Workflow framework that composes async steps.
 """
 
-import os
 import asyncio
 import time
-from typing import Literal, Optional, Callable, TypeVar, Generic, List, Awaitable
+
+from typing import Literal, Callable, TypeVar, Generic, List, Awaitable
 from dataclasses import dataclass, field
 from abc import ABC
 from openai import OpenAI, AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI()
+
+async_client = AsyncOpenAI()
 
 
 # ============================================================================
@@ -43,8 +44,10 @@ async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Reusable abstraction for composing async workflow steps
 # ============================================================================
 
+
 class WorkflowState(ABC):
     """Base class for workflow state with control flow."""
+
     should_continue: bool = True
 
 
@@ -60,6 +63,7 @@ class Workflow(Generic[StateT]):
         workflow = Workflow(step1, step2, step3)
         result = await workflow.run(initial_state)
     """
+
     def __init__(self, *steps: Step[StateT]):
         self.steps = steps
 
@@ -79,7 +83,6 @@ async def llm(prompt: str, instructions: str = "", model: str = "gpt-4o-mini") -
         model=model,
         instructions=instructions if instructions else None,
         input=prompt,
-        temperature=0.7
     )
     return response.output_text
 
@@ -89,9 +92,11 @@ async def llm(prompt: str, instructions: str = "", model: str = "gpt-4o-mini") -
 # Sequential steps where each builds on the previous output
 # ============================================================================
 
+
 @dataclass
 class ChainState(WorkflowState):
     """State for prompt chaining pattern."""
+
     topic: str = ""
     outline: str = ""
     draft: str = ""
@@ -144,9 +149,11 @@ async def prompt_chaining():
 # Classify and route to specialized handlers
 # ============================================================================
 
+
 @dataclass
 class RoutingState(WorkflowState):
     """State for routing pattern."""
+
     query: str = ""
     category: str = ""
     response: str = ""
@@ -155,6 +162,7 @@ class RoutingState(WorkflowState):
 
 class Classification(BaseModel):
     """Schema for query classification."""
+
     category: Literal["technical", "billing", "general"]
 
 
@@ -165,7 +173,7 @@ async def classify_query(state: RoutingState) -> RoutingState:
     result = await async_client.responses.parse(
         model="gpt-4o-mini",
         input=f"Classify as [technical, billing, general]: {state.query}",
-        text_format=Classification
+        text_format=Classification,
     )
 
     state.category = result.output_parsed.category
@@ -178,7 +186,7 @@ async def route_to_handler(state: RoutingState) -> RoutingState:
     instructions_map = {
         "technical": "You are a technical support specialist. Provide step-by-step solutions.",
         "billing": "You are a billing specialist. Be empathetic about payment issues.",
-        "general": "You are a friendly customer service rep."
+        "general": "You are a friendly customer service rep.",
     }
 
     instructions = instructions_map.get(state.category, instructions_map["general"])
@@ -196,7 +204,7 @@ async def routing():
     queries = [
         "My app crashes when I export data",
         "I was charged twice this month",
-        "What are your office hours?"
+        "What are your office hours?",
     ]
 
     for query in queries:
@@ -210,9 +218,11 @@ async def routing():
 # Process multiple independent items concurrently
 # ============================================================================
 
+
 @dataclass
 class ParallelState(WorkflowState):
     """State for parallelization pattern."""
+
     items: List[str] = field(default_factory=list)
     results: List[str] = field(default_factory=list)
     should_continue: bool = True
@@ -225,7 +235,7 @@ async def parallel_process(state: ParallelState) -> ParallelState:
     async def classify_item(item: str) -> str:
         return await llm(
             f"Classify as: spam, urgent, normal, or newsletter. Reply with just the category.\n\n{item}",
-            instructions="You are an email classifier."
+            instructions="You are an email classifier.",
         )
 
     # Execute all tasks concurrently
@@ -245,7 +255,7 @@ async def parallelization():
         "Weekly newsletter: Top 10 AI developments",
         "Meeting reminder: Team standup at 10am",
         "Congratulations! You've won a million dollars!",
-        "Your invoice for March is attached"
+        "Your invoice for March is attached",
     ]
 
     workflow = Workflow[ParallelState](parallel_process)
@@ -268,9 +278,11 @@ async def parallelization():
 # Decompose task dynamically, execute in parallel, synthesize
 # ============================================================================
 
+
 @dataclass
 class OrchestratorState(WorkflowState):
     """State for orchestrator-workers pattern."""
+
     task: str = ""
     subtasks: List[str] = field(default_factory=list)
     results: List[str] = field(default_factory=list)
@@ -280,6 +292,7 @@ class OrchestratorState(WorkflowState):
 
 class TaskPlan(BaseModel):
     """Schema for task decomposition."""
+
     subtasks: List[str]
 
 
@@ -290,7 +303,7 @@ async def decompose_task(state: OrchestratorState) -> OrchestratorState:
     plan = await async_client.responses.parse(
         model="gpt-4o-mini",
         input=f"Break this into 3 specific subtasks: {state.task}",
-        text_format=TaskPlan
+        text_format=TaskPlan,
     )
 
     state.subtasks = plan.output_parsed.subtasks
@@ -315,7 +328,7 @@ async def synthesize_results(state: OrchestratorState) -> OrchestratorState:
     """Step 3: Orchestrator combines results."""
     print("  → Synthesizing results...")
 
-    combined = "\n".join([f"{i+1}. {r}" for i, r in enumerate(state.results)])
+    combined = "\n".join([f"{i + 1}. {r}" for i, r in enumerate(state.results)])
     state.synthesis = await llm(
         f"Synthesize these results for '{state.task}':\n{combined}"
     )
@@ -331,14 +344,10 @@ async def orchestrator_workers():
     subtasks based on the specific input.
     """
     workflow = Workflow[OrchestratorState](
-        decompose_task,
-        execute_workers,
-        synthesize_results
+        decompose_task, execute_workers, synthesize_results
     )
 
-    result = await workflow.run(
-        OrchestratorState(task="Research AI safety")
-    )
+    result = await workflow.run(OrchestratorState(task="Research AI safety"))
 
     print(f"\nSynthesis:\n{result.synthesis[:200]}...\n")
 
@@ -348,9 +357,11 @@ async def orchestrator_workers():
 # Generate → Evaluate → Refine loop for quality control
 # ============================================================================
 
+
 @dataclass
 class OptimizerState(WorkflowState):
     """State for evaluator-optimizer pattern."""
+
     task: str = ""
     draft: str = ""
     score: int = 0
@@ -362,6 +373,7 @@ class OptimizerState(WorkflowState):
 
 class Evaluation(BaseModel):
     """Schema for evaluation."""
+
     score: int  # 1-10
     feedback: str
 
@@ -386,7 +398,7 @@ async def evaluate_quality(state: OptimizerState) -> OptimizerState:
     eval_result = await async_client.responses.parse(
         model="gpt-4o-mini",
         input=f"Score 1-10 and provide feedback:\n{state.draft}",
-        text_format=Evaluation
+        text_format=Evaluation,
     )
 
     state.score = eval_result.output_parsed.score
@@ -413,6 +425,7 @@ async def evaluator_optimizer():
 
     Continues iterating until quality threshold is met or max iterations reached.
     """
+
     # Create a loop workflow using should_continue flag
     async def optimize_loop(state: OptimizerState) -> OptimizerState:
         """Run generate-evaluate loop until quality threshold met."""
@@ -424,9 +437,7 @@ async def evaluator_optimizer():
 
     workflow = Workflow[OptimizerState](optimize_loop)
 
-    result = await workflow.run(
-        OptimizerState(task="Write Python Fibonacci function")
-    )
+    result = await workflow.run(OptimizerState(task="Write Python Fibonacci function"))
 
     print(f"\nFinal (after {result.iterations} iterations):")
     print(f"{result.final[:150]}...\n")
@@ -470,7 +481,9 @@ async def main():
     print("=" * 70)
     print("✓ The Workflow framework provides composable, type-safe orchestration")
     print("✓ WorkflowState base class enables control flow with should_continue")
-    print("✓ Each pattern uses specialized state classes (ChainState, RoutingState, etc.)")
+    print(
+        "✓ Each pattern uses specialized state classes (ChainState, RoutingState, etc.)"
+    )
     print("✓ These 5 patterns are fundamental building blocks for AI agents")
     print("\nNext: Build autonomous agents that decide workflows dynamically!")
     print("=" * 70)
