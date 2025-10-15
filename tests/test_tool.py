@@ -50,7 +50,7 @@ def test_tool_to_openai_format():
     tool_obj = Tool.from_function(search)
     schema = tool_obj.to_openai_format()
 
-    # Verify OpenAI structure
+    # Verify OpenAI Responses API format (flat structure)
     assert schema["type"] == "function"
     assert schema["name"] == "search"
     assert schema["description"] == "Search for information."

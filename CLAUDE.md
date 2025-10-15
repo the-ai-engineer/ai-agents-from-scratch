@@ -109,7 +109,7 @@ uv run python test_setup.py
 
 # Run any lesson from root
 uv run python 04-api-basics/01-basic.py
-uv run python 07-tool-calling/basic.py
+uv run python 07-tool-calling/examples.py
 
 # Or navigate into lesson directory
 cd 09-agent-architecture
@@ -137,7 +137,7 @@ uv add --dev pytest black ruff
 ### Tool Calling
 - Tools can be defined manually (raw JSON schema) or with `@tool` decorator
 - The `@tool` decorator from `src/tool.py` generates schemas from function signatures
-- Tool methods: `.to_dict()` for OpenAI format conversion
+- Tool methods: `.to_openai_format()` for OpenAI format conversion (flat schema for Responses API)
 - Tool execution returns JSON strings for consistency
 
 ### State Management

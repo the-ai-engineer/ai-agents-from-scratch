@@ -111,26 +111,68 @@ class Agent:
         return message.parsed
 
     async def _agent_loop(self, max_turns: int = 10) -> str:
-        """Main loop: call model, execute tools, repeat."""
+        """
+        Main loop: call model, execute tools, repeat.
+
+        This is the core of how an agent works:
+        1. Call the AI model
+        2. If it wants to use tools, execute them
+        3. Send results back to the model
+        4. Repeat until the model gives a final answer
+        """
         tool_schemas = [t["schema"] for t in self.tools.values()]
 
         for turn in range(max_turns):
-            # Call the model
-            response = await self.client.chat.completions.create(
+            # Step 1: Call the model with Responses API
+            response = await self.client.responses.create(
                 model=self.model,
-                messages=self.messages,
+                input=self.messages,  # Responses API uses 'input' not 'messages'
                 tools=tool_schemas if tool_schemas else None,
             )
 
-            message = response.choices[0].message
-            self.messages.append(message.model_dump(exclude_none=True))
+            # Step 2: Process output items
+            # Responses API returns an array of 'output' items (not 'choices')
+            has_tool_calls = False
+            final_text = None
 
-            # Done? Return the response
-            if not message.tool_calls:
-                return message.content or ""
+            for item in response.output:
+                if item.type == "message":
+                    # Extract text from message content
+                    if item.content and len(item.content) > 0:
+                        final_text = item.content[0].text
 
-            # Execute tools and add results
-            await self._execute_tools(message.tool_calls)
+                    # Add to conversation history
+                    self.messages.append({
+                        "role": "assistant",
+                        "content": final_text or ""
+                    })
+
+                elif item.type == "function_call":
+                    # Mark that we have tool calls to execute
+                    has_tool_calls = True
+
+                    # First, add the function call itself to conversation history
+                    self.messages.append({
+                        "type": "function_call",
+                        "call_id": item.call_id,
+                        "name": item.name,
+                        "arguments": item.arguments,
+                    })
+
+                    # Execute the tool call
+                    result = await self._call_tool(item)
+
+                    # Then add the tool result to conversation
+                    # Responses API uses "type" not "role", and "output" not "content"
+                    self.messages.append({
+                        "type": "function_call_output",
+                        "call_id": item.call_id,
+                        "output": result,
+                    })
+
+            # Step 3: If no tool calls, return the final answer
+            if not has_tool_calls and final_text:
+                return final_text
 
         raise RuntimeError(f"Agent didn't finish in {max_turns} turns")
 
@@ -162,7 +204,9 @@ class Agent:
 
     async def _call_tool(self, call) -> str:
         """Call a single tool and return JSON result."""
-        name = call.function.name
+        # Responses API has flat structure: call.name and call.arguments
+        # (not nested under call.function like Chat Completions API)
+        name = call.name
         tool = self.tools.get(name)
 
         if not tool:
@@ -170,7 +214,7 @@ class Agent:
 
         try:
             # Parse arguments
-            args = json.loads(call.function.arguments or "{}")
+            args = json.loads(call.arguments or "{}")
 
             # Call the function (async or sync)
             if tool["is_async"]:

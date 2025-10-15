@@ -4,13 +4,13 @@
 
 In this lesson, you'll learn how to give AI the ability to take actions in the real world through tool calling—the technique that transforms LLMs from pure text generators into systems that can query APIs, search databases, perform calculations, and interact with external services.
 
-You'll start with the fundamentals (manual tool definitions) and progress to production patterns using the `@tool` decorator for automatic schema generation, type safety, and clean architecture.
+You'll start with manual JSON schemas to understand how tool calling works under the hood, then learn how a simple dataclass can reduce boilerplate and make your code cleaner.
 
 By the end of this lesson, you'll understand:
 - How tool calling bridges the gap between LLM intelligence and real-world actions
 - The request-execute-respond loop that powers AI agents
-- The `@tool` decorator pattern used in production systems
-- Automatic schema generation from function signatures
+- Manual tool schema definition (understanding the format)
+- Using a dataclass to automate schema generation
 - Tool registry patterns for managing multiple tools
 
 ## The Problem
@@ -19,29 +19,11 @@ LLMs are trained on static data. They can't check the current weather, look up s
 
 When a user asks "What's the weather in Paris?", the LLM can only say "I don't have access to real-time weather data." It knows weather exists. It understands the question. But it can't actually get the answer.
 
-Additionally, manual tool definitions are tedious and error-prone. Every tool requires writing JSON Schema by hand, manually parsing arguments, and hoping the LLM sends valid data. No type safety. No validation. No IDE autocomplete.
+Additionally, writing tool definitions manually is tedious. Every tool requires writing JSON Schema by hand, which is error-prone and verbose.
 
-## The Solution: Tool Calling with @tool Decorator
+## The Solution: Tool Calling
 
 Tool calling bridges the gap between LLM intelligence and real-world actions. You define functions the AI can call—like `get_weather(city)` or `search_database(query)`—and the LLM decides when and how to use them.
-
-The modern approach uses the `@tool` decorator for automatic schema generation:
-
-```python
-@tool
-def get_weather(city: str) -> str:
-    """Get the current weather for a given city.
-
-    Args:
-        city: City name, e.g., 'Paris', 'London', 'Tokyo'
-    """
-    return f"Weather in {city}"
-
-# Schema generated automatically from function signature and docstring!
-tools = [get_weather.tool.to_openai_format()]
-```
-
-The schema generates automatically from your function signature and docstring. Type hints define parameter types. Required vs optional parameters are detected automatically.
 
 ```mermaid
 sequenceDiagram
@@ -78,76 +60,35 @@ The LLM orchestrates. You execute. The user gets a complete answer with real-tim
 
 ## How It Works
 
-### The @tool Decorator Pattern
-
-The `@tool` decorator uses Python introspection to automatically generate OpenAI tool schemas from your function signatures:
-
-```python
-import inspect
-from typing import Callable, Any, get_type_hints
-from pydantic import BaseModel, create_model
-
-def tool(func: Callable) -> Callable:
-    """Decorator to mark a function as a tool."""
-    func.tool = Tool.from_function(func)
-    return func
-
-class Tool(BaseModel):
-    """Tool metadata for function calling."""
-    name: str
-    description: str
-    parameters: dict[str, Any]
-
-    @classmethod
-    def from_function(cls, func: Callable) -> "Tool":
-        """Create a Tool from a function using introspection."""
-        return cls(
-            name=func.__name__,
-            description=inspect.getdoc(func) or "",
-            parameters=create_json_schema(func),
-        )
-
-    def to_openai_format(self) -> dict:
-        """Convert to OpenAI Responses API format."""
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            }
-        }
-```
-
-This pattern:
-- Uses `inspect.getdoc()` to extract docstrings as descriptions
-- Uses `get_type_hints()` to determine parameter types
-- Uses `inspect.signature()` to detect required vs optional parameters
-- Uses Pydantic's `create_model()` to generate JSON schemas automatically
-
 ### Step-by-Step: Tool Calling Flow
 
-#### Step 1: Define Your Tools
+#### Step 1: Define Your Tool Schema
 
-Use the `@tool` decorator on any function you want the LLM to call:
+First, you need to tell the LLM about your tool in a format it understands (JSON Schema):
 
 ```python
-@tool
-def get_weather(city: str) -> str:
-    """Get the current weather for a given city.
-
-    Args:
-        city: City name, e.g., 'Paris', 'London', 'Tokyo'
-    """
-    weather_db = {
-        "paris": "Sunny, 22°C",
-        "london": "Cloudy, 15°C",
-        "tokyo": "Rainy, 18°C",
+tools = [{
+    "type": "function",
+    "name": "get_weather",
+    "description": "Get the current weather for a given city",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "city": {
+                "type": "string",
+                "description": "The city name, e.g., Paris, London"
+            }
+        },
+        "required": ["city"]
     }
-    return weather_db.get(city.lower(), f"Weather data not available for {city}")
+}]
 ```
 
-The docstring matters. The LLM uses it to decide when to call this tool. Include an Args section describing each parameter.
+This JSON tells the LLM:
+- There's a function called `get_weather`
+- It takes one parameter: `city` (a string)
+- The `city` parameter is required
+- Use this to get weather for a city
 
 #### Step 2: Make the API Call with Tools
 
@@ -157,8 +98,6 @@ Pass your tools to the Responses API:
 from openai import OpenAI
 
 client = OpenAI()
-
-tools = [get_weather.tool.to_openai_format()]
 
 response = client.responses.create(
     model="gpt-4o-mini",
@@ -178,8 +117,6 @@ for item in response.output:
     if item.type == "function_call":
         print(f"Tool: {item.name}")
         print(f"Arguments: {item.arguments}")
-    elif item.type == "message":
-        print(f"Text response: {item.content}")
 ```
 
 If the LLM called a tool, it returns the function name and JSON arguments. You don't execute anything yet—this is just the request.
@@ -190,6 +127,14 @@ Parse the arguments and call your actual function:
 
 ```python
 import json
+
+def get_weather(city: str) -> str:
+    """Get the current weather for a given city."""
+    weather_data = {
+        "paris": "Sunny, 22°C",
+        "london": "Cloudy, 15°C",
+    }
+    return weather_data.get(city.lower(), f"Weather data not available for {city}")
 
 args = json.loads(item.arguments)
 result = get_weather(**args)
@@ -221,35 +166,94 @@ print(final_response.output_text)
 
 The LLM takes your raw data and turns it into a natural language response.
 
+## Reducing Boilerplate with a Dataclass
+
+Writing JSON schemas by hand is tedious. A simple dataclass can automate schema generation from function signatures:
+
+```python
+import inspect
+from dataclasses import dataclass
+
+@dataclass
+class Tool:
+    """Simple dataclass to convert functions to OpenAI tool schemas."""
+    name: str
+    description: str
+    parameters: dict
+
+    def to_dict(self) -> dict:
+        """Convert to OpenAI Responses API format."""
+        return {
+            "type": "function",
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.parameters,
+        }
+
+    @classmethod
+    def from_function(cls, func) -> "Tool":
+        """Create a Tool from a Python function."""
+        sig = inspect.signature(func)
+
+        properties = {}
+        required = []
+
+        for name, param in sig.parameters.items():
+            properties[name] = {"type": "string"}
+            if param.default == inspect.Parameter.empty:
+                required.append(name)
+
+        return cls(
+            name=func.__name__,
+            description=inspect.getdoc(func) or "",
+            parameters={
+                "type": "object",
+                "properties": properties,
+                "required": required,
+            },
+        )
+```
+
+Now you can generate schemas automatically:
+
+```python
+def list_files(directory: str = ".") -> str:
+    """List all files in a directory.
+
+    Args:
+        directory: Path to directory (default: current directory)
+    """
+    import os
+    files = os.listdir(directory)
+    return f"Files in '{directory}': {', '.join(files)}"
+
+# Generate schema automatically
+list_files_tool = Tool.from_function(list_files)
+tools = [list_files_tool.to_dict()]
+```
+
+The dataclass:
+- Extracts the function name automatically
+- Uses the docstring as the description
+- Detects required vs optional parameters
+- Generates the JSON schema for you
+
 ## Code Examples
 
-This lesson includes two example files:
+This lesson includes one comprehensive example file with four progressive examples:
 
-### basic.py - Learning the Fundamentals
+### examples.py - Complete Tool Calling Guide
 
-Three examples showing progression from manual schemas to the @tool decorator:
-
-1. **Manual Tool Definition**: Traditional approach with hand-written JSON Schema
-2. **Single Tool with @tool**: Automatic schema generation from function signature
-3. **Multiple Tools with Registry**: Clean pattern for managing multiple tools
-
-```bash
-cd 07-tool-calling
-uv run basic.py
-```
-
-### advanced.py - Production Patterns
-
-Three examples demonstrating production-ready patterns:
-
-1. **Basic @tool Decorator**: Automatic schema generation with validation
-2. **Multiple Tools with Optional Parameters**: Handling default values and tool registry
-3. **Type Validation and Error Handling**: Leveraging type hints for validation
+1. **Manual JSON Schema**: Write the schema by hand to understand the format (weather tool)
+2. **Dataclass Helper**: Use a simple dataclass to automate schema generation (list files)
+3. **Multiple Tools with Registry**: Clean pattern for managing multiple tools (find files, get file size)
+4. **Error Handling**: Return errors as strings for graceful failure (read file with error handling)
 
 ```bash
-cd 07-tool-calling
-uv run advanced.py
+uv run python 07-tool-calling/examples.py
 ```
+
+Each example builds on the previous one, showing you the progression from manual schemas to production-ready patterns.
 
 ## Key Implementation Patterns
 
@@ -258,28 +262,27 @@ uv run advanced.py
 Manage multiple tools cleanly using a dictionary:
 
 ```python
-@tool
-def get_weather(city: str) -> str:
-    """Get current weather for a city."""
-    return f"Weather in {city}"
+def list_files(directory: str = ".") -> str:
+    """List all files in a directory."""
+    import os
+    files = os.listdir(directory)
+    return f"Files: {', '.join(files)}"
 
-@tool
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression."""
-    try:
-        result = eval(expression, {"__builtins__": {}}, {})
-        return str(result)
-    except Exception as e:
-        return f"Error: {str(e)}"
+def find_files(pattern: str, directory: str = ".") -> str:
+    """Find files matching a pattern in a directory."""
+    import os
+    import fnmatch
+    matches = [f for f in os.listdir(directory) if fnmatch.fnmatch(f, pattern)]
+    return f"Found {len(matches)} file(s): {', '.join(matches)}"
 
 # Create registry
 tool_registry = {
-    "get_weather": get_weather,
-    "calculate": calculate,
+    "list_files": list_files,
+    "find_files": find_files,
 }
 
 # Generate schemas automatically
-tools = [func.tool.to_openai_format() for func in tool_registry.values()]
+tools = [Tool.from_function(func).to_dict() for func in tool_registry.values()]
 
 # Execute from registry
 for output in response.output:
@@ -299,7 +302,6 @@ This pattern:
 Handle optional parameters using default values:
 
 ```python
-@tool
 def send_email(to: str, subject: str, body: str = "No body provided") -> str:
     """Send an email to a recipient.
 
@@ -311,19 +313,22 @@ def send_email(to: str, subject: str, body: str = "No body provided") -> str:
     return f"Email sent to {to} with subject '{subject}'"
 ```
 
-The schema automatically marks `body` as optional and includes the default value.
+The dataclass automatically marks `body` as optional when it sees a default value.
 
 ### Error Handling
 
 Always return errors as strings so the LLM can explain them:
 
 ```python
-@tool
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression."""
+def read_file(filename: str) -> str:
+    """Read the contents of a text file."""
     try:
-        result = eval(expression, {"__builtins__": {}}, {})
-        return str(result)
+        with open(filename, 'r') as f:
+            return f"File content: {f.read()}"
+    except FileNotFoundError:
+        return f"Error: File '{filename}' not found"
+    except PermissionError:
+        return f"Error: Permission denied reading '{filename}'"
     except Exception as e:
         return f"Error: {str(e)}"
 ```
@@ -332,11 +337,11 @@ When the tool fails, the LLM receives the error and explains it naturally to the
 
 ## Key Takeaways
 
-1. **Use @tool decorator for cleaner code**: Eliminates manual JSON schemas. Function signature + docstring = automatic tool schema.
+1. **Understand the manual format first**: Writing JSON schemas by hand teaches you exactly what the LLM needs.
 
-2. **Clear tool descriptions are critical**: The LLM uses descriptions to decide when to call tools. Write detailed docstrings with Args sections.
+2. **Dataclass helpers reduce boilerplate**: Once you understand the format, automate it with a simple dataclass.
 
-3. **Type hints are essential**: The decorator uses type hints to generate correct parameter types. Use `str`, `int`, `bool`, etc.
+3. **Clear tool descriptions are critical**: The LLM uses descriptions to decide when to call tools. Write detailed docstrings.
 
 4. **Tool registry pattern scales**: Start with a dictionary mapping names to functions. It works for 3 tools or 30 tools.
 
@@ -344,25 +349,23 @@ When the tool fails, the LLM receives the error and explains it naturally to the
 
 6. **Return errors gracefully**: When tools fail, return error messages as strings. The LLM can explain problems naturally.
 
-7. **Optional parameters work automatically**: Parameters with defaults become optional in the schema automatically.
+7. **Optional parameters work automatically**: Parameters with defaults become optional in the schema.
 
 8. **Start with 2-3 tools**: Don't overwhelm the LLM with 20 tools at once. Add more as needed.
 
 ## Common Pitfalls
 
-1. **Missing type hints**: The decorator needs type hints to generate schemas. `def foo(x)` won't work. Use `def foo(x: str)`.
+1. **Poor docstrings**: "Get weather" doesn't tell the LLM enough. Write detailed descriptions.
 
-2. **Poor docstrings**: "Get weather" doesn't tell the LLM enough. Write detailed descriptions with Args sections.
+2. **Not using the tool registry pattern**: Managing multiple tools without a registry leads to messy if/elif chains.
 
-3. **Not using the tool registry pattern**: Managing multiple tools without a registry leads to messy if/elif chains.
+3. **Not returning tool results**: Executing the tool but forgetting to send the result back to the LLM. The conversation hangs.
 
-4. **Not returning tool results**: Executing the tool but forgetting to send the result back to the LLM. The conversation hangs.
+4. **Too many tools at once**: Starting with 10+ tools confuses the LLM. It struggles to choose. Start small.
 
-5. **Forgetting to call .tool.to_openai_format()**: The decorated function has a `.tool` attribute. You must call `.to_openai_format()` to get the schema.
+5. **Assuming tools are called**: Always check if `output.type == "function_call"`. Sometimes the LLM answers directly.
 
-6. **Too many tools at once**: Starting with 10+ tools confuses the LLM. It struggles to choose. Start small.
-
-7. **Assuming tools are called**: Always check if `output.type == "function_call"`. Sometimes the LLM answers directly.
+6. **Forgetting the call_id**: Function call outputs must include the `call_id` from the original function call.
 
 ## When to Use Tool Calling
 
@@ -396,25 +399,28 @@ Companies use tool calling to automate thousands of repetitive tasks, provide 24
 
 ## Assignment
 
-Build a multi-tool assistant with automatic schema generation:
+Build a multi-tool file system assistant:
 
-1. **Weather tool**: Get current weather for any city
-2. **Calculator tool**: Perform mathematical calculations
-3. **Email validator tool**: Check if an email address is valid format
-4. **Time tool** (bonus): Get current time in different timezones with optional format parameter
+1. **List files tool**: List all files in a directory
+2. **Read file tool**: Read the contents of a text file
+3. **File info tool**: Get file size and modification time
+4. **Search files tool** (bonus): Search for text within files with optional case-sensitive parameter
 
 Requirements:
-- Use the `@tool` decorator for all tools
+- Start with manual JSON schemas for at least one tool
+- Use the dataclass helper for the others
 - Implement the tool registry pattern
 - Include at least one tool with optional parameters
-- Write comprehensive docstrings with Args sections
+- Write comprehensive docstrings
 - Test with 5+ questions that exercise different tools
 - Include error handling that returns clear messages
 
 Test cases should include:
-- A question that needs each individual tool
-- A question that needs no tools (tests LLM judgment)
-- A question that causes an error (tests error handling)
+- "What files are in the current directory?" (list files)
+- "Read the README.md file" (read file)
+- "What is the size of examples.py?" (file info)
+- "What is Python?" (needs no tools - tests LLM judgment)
+- "Read the file xyz123.txt" (causes FileNotFoundError - tests error handling)
 
 ## Next Steps
 
@@ -425,6 +431,6 @@ Move to **08-workflow-patterns** to learn five fundamental patterns for building
 ## Resources
 
 - [OpenAI Function Calling Guide](https://platform.openai.com/docs/guides/function-calling) - Official documentation
-- [Python Type Hints](https://docs.python.org/3/library/typing.html) - Master typing for better schemas
-- [Pydantic Documentation](https://docs.pydantic.dev) - Understanding create_model and schemas
+- [Python Inspect Module](https://docs.python.org/3/library/inspect.html) - For function introspection
+- [Dataclasses](https://docs.python.org/3/library/dataclasses.html) - Python dataclass documentation
 - [JSON Schema Documentation](https://json-schema.org/) - Schema specification details

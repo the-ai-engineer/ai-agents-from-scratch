@@ -35,7 +35,7 @@ class Tool:
     parameters: dict
 
     def to_openai_format(self) -> dict:
-        """Convert tool to OpenAI function calling format."""
+        """Convert tool to OpenAI Responses API format (flat, not nested)."""
         return {
             "type": "function",
             "name": self.name,
