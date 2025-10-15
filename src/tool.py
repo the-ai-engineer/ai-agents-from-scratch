@@ -29,24 +29,18 @@ class Tool:
     Tools are functions that agents can call to interact with external systems,
     retrieve information, or perform computations.
     """
+
     name: str
     description: str
     parameters: dict
 
-    def to_dict(self) -> dict:
-        """
-        Convert tool to OpenAI function calling format.
-
-        Returns:
-            Dictionary compatible with OpenAI's tools parameter
-        """
+    def to_openai_format(self) -> dict:
+        """Convert tool to OpenAI function calling format."""
         return {
             "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            },
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.parameters,
         }
 
     @classmethod
@@ -97,7 +91,7 @@ class Tool:
 
     def __repr__(self) -> str:
         """String representation of the tool."""
-        param_names = list(self.parameters.get('properties', {}).keys())
+        param_names = list(self.parameters.get("properties", {}).keys())
         return f"Tool(name={self.name}, params={param_names})"
 
 
@@ -115,7 +109,7 @@ def tool(func: Callable) -> Callable:
             return f"Weather in {city}"
 
         # Access the tool schema
-        schema = get_weather.tool.to_dict()
+        schema = get_weather.tool.to_openai_format()
 
         # Call the function normally
         result = get_weather("Paris")

@@ -1,270 +1,139 @@
-"""
-Agent module providing core agent functionality with tool-calling capabilities.
-
-This module implements the fundamental agent pattern: a model using tools in a loop.
-It's designed to be simple enough for learning while being robust enough for real use.
-"""
+"""AI agent compatible with OpenAI's Responses API."""
 
 import json
 import logging
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 from openai import OpenAI
 
-from .tool import Tool
-
-
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
-class ConversationMemory:
-    """
-    Manages conversation history for an agent.
-
-    This class encapsulates message management, keeping system prompts persistent
-    while allowing user/assistant messages to be added and cleared.
-
-    Why separate class? Keeps concerns separate and makes memory strategies pluggable.
-    """
-
-    def __init__(self, system_prompt: Optional[str] = None):
-        """
-        Initialize conversation memory.
-
-        Args:
-            system_prompt: Optional system instructions for the agent
-        """
-        self.messages = []
-        if system_prompt:
-            self.messages.append({"role": "system", "content": system_prompt})
-            logger.debug(f"Initialized memory with system prompt: {system_prompt[:50]}...")
-
-    def add_message(self, role: str, content: str) -> None:
-        """Add a message to conversation history."""
-        self.messages.append({"role": role, "content": content})
-        logger.debug(f"Added {role} message: {content[:100]}...")
-
-    def add_tool_result(self, tool_call_id: str, content: str) -> None:
-        """Add a tool execution result to history."""
-        self.messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call_id,
-            "content": content
-        })
-        logger.debug(f"Added tool result for {tool_call_id}: {content[:100]}...")
-
-    def get_history(self) -> list[dict]:
-        """Get complete conversation history."""
-        return self.messages
-
-    def clear(self) -> None:
-        """Clear conversation history, keeping system messages."""
-        system_messages = [msg for msg in self.messages if msg["role"] == "system"]
-        self.messages = system_messages
-        logger.info("Cleared conversation history (kept system messages)")
-
-    def __len__(self) -> int:
-        """Return number of messages in history."""
-        return len(self.messages)
-
-
 class Agent:
-    """
-    Autonomous agent with tool-calling capabilities.
-
-    This implements the core agent loop pattern:
-    1. Send message + available tools to LLM
-    2. LLM decides to call tools or provide final answer
-    3. If tools called: execute them, add results to history, repeat
-    4. If final answer: return response to user
-
-    The agent continues until it provides a final answer or reaches max iterations.
-    """
+    """AI agent using OpenAI's Responses API with function calling."""
 
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
-        max_iterations: int = 5,
+        model: str = "gpt-5",
         system_prompt: Optional[str] = None,
-        api_key: Optional[str] = None,
+        max_iterations: int = 10,
     ):
-        """
-        Initialize the agent.
-
-        Args:
-            model: OpenAI model to use
-            max_iterations: Maximum agent loop iterations (prevents infinite loops)
-            system_prompt: Optional system instructions for the agent
-            api_key: Optional OpenAI API key (defaults to OPENAI_API_KEY env var)
-        """
-        self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        self.client = OpenAI()
         self.model = model
+        self.instructions = system_prompt
         self.max_iterations = max_iterations
-        self.memory = ConversationMemory(system_prompt=system_prompt)
-        self.tools: dict[str, Callable] = {}
-        self.tool_schemas: list[dict] = []
 
-        logger.info(f"Initialized agent with model={model}, max_iterations={max_iterations}")
+        # Store both schema and callable
+        self.tools: dict[str, dict] = {}
 
-    def register_tool(self, func: Callable) -> None:
-        """
-        Register a tool function for the agent to use.
+        # Input list replaces messages
+        self.input_list: list[dict] = []
 
-        Args:
-            func: A Python function to register as a tool. Should have a docstring.
+    def register_tool(self, func: Callable) -> "Agent":
+        """Register a function as a tool."""
+        from tool import Tool
 
-        Example:
-            def get_weather(city: str) -> str:
-                '''Get the current weather for a city.'''
-                return f"Weather in {city}: Sunny, 72F"
-
-            agent.register_tool(get_weather)
-        """
         tool = Tool.from_function(func)
-        self.tools[tool.name] = func
-        self.tool_schemas.append(tool.to_dict())
+        self.tools[tool.name] = {
+            "schema": tool.to_openai_format(),
+            "func": func,
+        }
         logger.info(f"Registered tool: {tool.name}")
-        logger.debug(f"Tool schema: {tool.to_dict()}")
+        return self
 
-    def register_tools(self, *funcs: Callable) -> None:
-        """Register multiple tools at once."""
+    def register_tools(self, *funcs: Callable) -> "Agent":
+        """Register multiple tools."""
         for func in funcs:
             self.register_tool(func)
+        return self
 
     def chat(self, message: str) -> str:
-        """
-        Send a message to the agent and get a response.
+        """Send a message and get the agent's response."""
+        if not message.strip():
+            raise ValueError("Message cannot be empty")
 
-        This is the main public interface. It handles the entire agent loop internally,
-        executing tools as needed until the agent provides a final answer.
+        # Add user message to input
+        self.input_list.append({"role": "user", "content": message})
+        logger.info(f"User: {message[:100]}...")
 
-        Args:
-            message: User message to send to the agent
-
-        Returns:
-            Agent's final text response
-
-        Raises:
-            RuntimeError: If max iterations reached without final answer
-        """
-        logger.info(f"User message: {message}")
-
-        # Add user message to history
-        self.memory.add_message("user", message)
-
-        # Run the agent loop
-        response = self._run_agent_loop()
-
-        logger.info(f"Agent response: {response[:200]}...")
-        return response
+        return self._run_agent_loop()
 
     def reset(self) -> None:
-        """Clear conversation history (keeps system prompt)."""
-        self.memory.clear()
-        logger.info("Agent conversation reset")
+        """Clear conversation history."""
+        self.input_list = []
+        logger.info("Conversation reset")
 
     def _run_agent_loop(self) -> str:
-        """
-        Execute the agent loop: call LLM, execute tools, repeat until final answer.
+        """Main agent loop: call model → execute tools → repeat."""
+        tool_schemas = [t["schema"] for t in self.tools.values()]
 
-        This is the heart of the agent. It implements the "model using tools in a loop" pattern.
+        for iteration in range(self.max_iterations):
+            logger.debug(f"Iteration {iteration + 1}/{self.max_iterations}")
 
-        Returns:
-            Final text response from the agent
-        """
-        iteration = 0
-
-        while iteration < self.max_iterations:
-            iteration += 1
-            logger.info(f"Agent loop iteration {iteration}/{self.max_iterations}")
-
-            # Call LLM with conversation history and available tools
-            response = self.client.chat.completions.create(
+            # Call the model using responses.create
+            response = self.client.responses.create(
                 model=self.model,
-                messages=self.memory.get_history(),
-                tools=self.tool_schemas if self.tool_schemas else None,
+                input=self.input_list,
+                instructions=self.instructions,
+                tools=tool_schemas if tool_schemas else None,
             )
 
-            message = response.choices[0].message
+            # Save all output items for next request
+            self.input_list.extend(response.output)
 
-            # Add assistant message to history
-            self.memory.messages.append(message.model_dump(exclude_none=True))
+            # Check for function calls in output
+            function_calls = [
+                item for item in response.output if item.type == "function_call"
+            ]
 
-            # Check if LLM wants to call tools
-            if message.tool_calls:
-                logger.info(f"LLM requested {len(message.tool_calls)} tool call(s)")
+            if not function_calls:
+                # No more tools to call - return final text
+                return response.output_text or ""
 
-                # Execute all requested tool calls
-                for tool_call in message.tool_calls:
-                    result = self._execute_tool(tool_call)
-                    self.memory.add_tool_result(tool_call.id, result)
+            # Execute all function calls
+            logger.debug(f"Executing {len(function_calls)} function calls")
+            for call in function_calls:
+                result = self._execute_tool(call)
 
-                # Continue loop - LLM will see tool results and decide next action
-                continue
+                # Append result in OpenAI's format
+                self.input_list.append(
+                    {
+                        "type": "function_call_output",
+                        "call_id": call.call_id,
+                        "output": result,
+                    }
+                )
 
-            # No tool calls - this is the final answer
-            final_response = message.content or ""
-            logger.info(f"Agent reached final answer after {iteration} iteration(s)")
-            return final_response
+        raise RuntimeError(
+            f"Agent exceeded {self.max_iterations} iterations. "
+            f"Last response had {len(function_calls)} function calls."
+        )
 
-        # Max iterations reached without final answer
-        error_msg = f"Agent reached max iterations ({self.max_iterations}) without providing final answer"
-        logger.error(error_msg)
-        raise RuntimeError(error_msg)
+    def _execute_tool(self, call: Any) -> str:
+        """Execute a single function call and return JSON result."""
+        name = call.name
+        tool_entry = self.tools.get(name)
 
-    def _execute_tool(self, tool_call) -> str:
-        """
-        Execute a tool function call.
-
-        Args:
-            tool_call: OpenAI tool call object
-
-        Returns:
-            JSON string containing tool execution result or error
-        """
-        function_name = tool_call.function.name
-        logger.info(f"Executing tool: {function_name}")
+        if tool_entry is None:
+            error_msg = f"Tool '{name}' not registered"
+            logger.error(error_msg)
+            return json.dumps({"error": error_msg})
 
         try:
-            # Parse arguments
-            arguments = json.loads(tool_call.function.arguments)
-            logger.debug(f"Tool arguments: {arguments}")
-
-            # Get the actual function
-            if function_name not in self.tools:
-                error_msg = f"Tool '{function_name}' not found in registered tools"
-                logger.error(error_msg)
-                return json.dumps({"error": error_msg})
-
-            func = self.tools[function_name]
-
-            # Execute the function
-            result = func(**arguments)
-            logger.info(f"Tool {function_name} executed successfully")
-            logger.debug(f"Tool result: {result}")
-
-            # Return result as JSON
+            args = json.loads(call.arguments or "{}")
+            result = tool_entry["func"](**args)
             return json.dumps({"result": result})
 
         except json.JSONDecodeError as e:
-            error_msg = f"Failed to parse tool arguments: {e}"
-            logger.error(error_msg)
-            return json.dumps({"error": error_msg})
-
-        except TypeError as e:
-            error_msg = f"Invalid arguments for tool '{function_name}': {e}"
-            logger.error(error_msg)
-            return json.dumps({"error": error_msg})
+            logger.error(f"Invalid JSON in {name}: {call.arguments}")
+            return json.dumps({"error": f"Invalid JSON: {e}"})
 
         except Exception as e:
-            error_msg = f"Tool execution failed: {e}"
-            logger.error(error_msg, exc_info=True)
-            return json.dumps({"error": error_msg})
+            logger.exception(f"Tool '{name}' failed")
+            return json.dumps({"error": f"{type(e).__name__}: {e}"})
 
     def __repr__(self) -> str:
-        """String representation of the agent."""
         return (
             f"Agent(model={self.model}, "
             f"tools={len(self.tools)}, "
-            f"messages={len(self.memory)})"
+            f"inputs={len(self.input_list)})"
         )
