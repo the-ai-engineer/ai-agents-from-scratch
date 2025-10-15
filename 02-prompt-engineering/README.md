@@ -190,7 +190,7 @@ What is the refund policy for digital products?
 
 The model now operates within known boundaries. It can't make things up because the source material is explicit. You can verify every answer against the context.
 
-This pattern is called Retrieval-Augmented Generation (RAG), and you'll learn the full implementation in a later module.
+This pattern is called Retrieval-Augmented Generation (RAG). This course focuses on agent fundamentals - RAG implementation is covered in a separate advanced module.
 
 ## Meta-Prompting: Using AI to Write Better Prompts
 

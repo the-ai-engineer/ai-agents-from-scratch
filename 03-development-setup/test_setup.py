@@ -13,15 +13,16 @@ import tiktoken
 # Load environment variables
 load_dotenv()
 
-print("="* 60)
+print("=" * 60)
 print("Testing Development Environment Setup")
-print("="* 60)
+print("=" * 60)
 
 ##=================================================##
 ## Test 1: Check Python version
 ##=================================================##
 
 import sys
+
 print(f"\n✓ Python version: {sys.version.split()[0]}")
 if sys.version_info < (3, 10):
     print("⚠ Warning: Python 3.10+ recommended")
@@ -48,7 +49,7 @@ try:
     response = client.responses.create(
         model="gpt-4o-mini",
         input="Say 'Hello, AI Engineer!' if you can read this.",
-        temperature=0
+        temperature=0,
     )
     print(f"✓ API working: {response.output_text}")
 except Exception as e:
@@ -58,26 +59,25 @@ except Exception as e:
 ##=================================================##
 ## Test 4: Test tokenization
 ##=================================================##
-
 print("\nTesting tokenization...")
 try:
     text = "This is a test message for tokenization."
     encoding = tiktoken.encoding_for_model("gpt-4o-mini")
     tokens = len(encoding.encode(text))
-    print(f"✓ Tokenization working")
+    print("Tokenization working")
     print(f"  Text: '{text}'")
     print(f"  Tokens: {tokens}")
 except Exception as e:
-    print(f"✗ Tokenization error: {e}")
+    print(f"Tokenization error: {e}")
     sys.exit(1)
 
 ##=================================================##
 ## Summary
 ##=================================================##
 
-print("\n" + "="* 60)
+print("\n" + "=" * 60)
 print("✓ All tests passed! Your environment is ready.")
-print("="* 60)
+print("=" * 60)
 print("\nNext steps:")
 print("  1. Head to lesson 04-api-basics")
 print("  2. Make your first API call")

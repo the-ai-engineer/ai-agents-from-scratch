@@ -665,4 +665,4 @@ uv run example.py
 - Patterns can be combined for sophisticated multi-stage workflows
 - These five patterns are foundational building blocks for agents
 
-**Next:** [Lesson 06 - Agent Architecture](../09-agent-architecture) - Build agents that decide their own workflows dynamically
+**Next:** [Lesson 09 - Agent Architecture](../09-agent-architecture) - Build agents that decide their own workflows dynamically

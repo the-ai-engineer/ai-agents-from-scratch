@@ -613,7 +613,7 @@ uv run example.py
 - **Learning/Prototyping:** File-based (what you built in this lesson - understand how it works)
 - **Production (control):** Self-hosted Redis (you control everything, predictable costs)
 - **Production (speed):** Managed Redis or Mem0 (less operational overhead)
-- **Semantic features:** Mem0 or build your own with vector DB (see [Lesson 11 - RAG](../11-example-faq-agent))
+- **Semantic features:** Mem0 or build your own with vector DB (covered in separate RAG module)
 - **Enterprise:** Custom solution with your existing database infrastructure
 
 **The Trade-off:**
@@ -735,7 +735,9 @@ Compare token usage and response quality across strategies.
 
 ## Next Steps
 
-You now have a complete, production-ready agent architecture with memory management. Next, explore [Lesson 11 - FAQ Agent with RAG](../11-example-faq-agent) to add knowledge retrieval capabilities using vector databases.
+You now have a complete, production-ready agent architecture with memory management. This completes the core fundamentals course!
+
+For advanced topics like RAG (Retrieval-Augmented Generation), vector databases, and production deployment, check out the separate advanced modules.
 
 ## Resources
 
