@@ -22,6 +22,7 @@ load_dotenv()
 ## Step 1: Define Tools
 ##=================================================##
 
+
 def get_weather(city: str) -> str:
     """Get current weather for a city."""
     weather_db = {
@@ -50,11 +51,9 @@ TOOL_SCHEMAS = [
         "description": "Get current weather for a city",
         "parameters": {
             "type": "object",
-            "properties": {
-                "city": {"type": "string", "description": "City name"}
-            },
-            "required": ["city"]
-        }
+            "properties": {"city": {"type": "string", "description": "City name"}},
+            "required": ["city"],
+        },
     },
     {
         "type": "function",
@@ -62,12 +61,10 @@ TOOL_SCHEMAS = [
         "description": "Get current time for a city",
         "parameters": {
             "type": "object",
-            "properties": {
-                "city": {"type": "string", "description": "City name"}
-            },
-            "required": ["city"]
-        }
-    }
+            "properties": {"city": {"type": "string", "description": "City name"}},
+            "required": ["city"],
+        },
+    },
 ]
 
 # Tool registry
@@ -80,6 +77,7 @@ TOOLS = {
 ##=================================================##
 ## Step 2: Build the Agent Class
 ##=================================================##
+
 
 class Agent:
     """
@@ -110,9 +108,7 @@ class Agent:
         for _ in range(max_iterations):
             # Call LLM with tools
             response = self.client.responses.create(
-                model=self.model,
-                input=self.messages,
-                tools=TOOL_SCHEMAS
+                model=self.model, input=self.messages, tools=TOOL_SCHEMAS
             )
 
             # Process response
@@ -124,32 +120,35 @@ class Agent:
                     # LLM generated text (final answer)
                     if item.content and len(item.content) > 0:
                         final_text = item.content[0].text
-                    self.messages.append({
-                        "role": "assistant",
-                        "content": final_text or ""
-                    })
+                    self.messages.append(
+                        {"role": "assistant", "content": final_text or ""}
+                    )
 
                 elif item.type == "function_call":
                     # LLM wants to call a tool
                     has_tool_calls = True
 
                     # Add function call to history
-                    self.messages.append({
-                        "type": "function_call",
-                        "call_id": item.call_id,
-                        "name": item.name,
-                        "arguments": item.arguments,
-                    })
+                    self.messages.append(
+                        {
+                            "type": "function_call",
+                            "call_id": item.call_id,
+                            "name": item.name,
+                            "arguments": item.arguments,
+                        }
+                    )
 
                     # Execute tool
                     result = self._execute_tool(item)
 
                     # Add result to history
-                    self.messages.append({
-                        "type": "function_call_output",
-                        "call_id": item.call_id,
-                        "output": result,
-                    })
+                    self.messages.append(
+                        {
+                            "type": "function_call_output",
+                            "call_id": item.call_id,
+                            "output": result,
+                        }
+                    )
 
             # If no tool calls, we're done
             if not has_tool_calls and final_text:
@@ -160,6 +159,8 @@ class Agent:
     def _execute_tool(self, function_call) -> str:
         """Execute a tool call and return result as JSON."""
         tool_name = function_call.name
+
+        print(f"Executing tool: {tool_name}")
 
         if tool_name not in TOOLS:
             return json.dumps({"error": f"Tool '{tool_name}' not found"})
