@@ -1,320 +1,282 @@
 """
-Lesson 07: Advanced Memory and State Management
+Lesson 07: Memory and State Management
 
-Learn how to manage conversation history, handle token limits, and persist state.
-
-This builds on the Agent class from Lesson 06, adding:
-- Token counting with tiktoken
-- Automatic history trimming
-- Conversation persistence (save/load)
+Learn how to manage conversation history and handle token limits.
+Focus on practical patterns for production agents.
 """
 
 import json
-import sys
 import tiktoken
-from pathlib import Path
-from typing import Callable, Optional
+import redis
+import json
+import numpy as np
+from typing import Tuple
+
+from typing import List, Dict, Any
+from openai import OpenAI
 from dotenv import load_dotenv
 
-# Add parent directory to path to import agents framework
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.agent import Agent as BaseAgent
 
 load_dotenv()
 
+client = OpenAI()
 
-class AgentWithMemory(BaseAgent):
-    """
-    Agent with advanced memory management.
 
-    Extends the base Agent class with:
-    - Token counting
-    - Automatic history trimming
-    - Conversation persistence
-    """
+##=================================================##
+## Token Management
+##=================================================##
 
-    def __init__(
-        self,
-        model: str = "gpt-4o-mini",
-        max_iterations: int = 5,
-        max_history_tokens: int = 4000,
-        system_prompt: Optional[str] = None,
-        tools: Optional[list[Callable]] = None,
-    ):
-        """
-        Initialize agent with memory management.
 
-        Args:
-            model: Which OpenAI model to use
-            max_iterations: Maximum number of tool-calling loops
-            max_history_tokens: Maximum tokens to keep in history
-            system_prompt: System instructions for the agent
-            tools: List of functions decorated with @tool
-        """
-        super().__init__(model, max_iterations, system_prompt, tools)
-        self.max_history_tokens = max_history_tokens
-        self.tokenizer = tiktoken.encoding_for_model(model)
+class ConversationMemory:
+    """Manage conversation history with token limits."""
 
-    def _count_tokens(self, messages: list = None) -> int:
-        """Count tokens in message history"""
+    def __init__(self, max_tokens: int = 3000, model: str = "gpt-4o-mini"):
+        self.max_tokens = max_tokens
+        self.messages = []
+        self.encoder = tiktoken.encoding_for_model(model)
+
+    def count_tokens(self, messages: List[Dict] = None) -> int:
+        """Count tokens in messages."""
         if messages is None:
-            messages = self.memory.get_items()
+            messages = self.messages
 
-        token_count = 0
-        for message in messages:
-            # Count content tokens
-            if isinstance(message.get("content"), str):
-                token_count += len(self.tokenizer.encode(message["content"]))
-            elif isinstance(message.get("output"), str):
-                # Count function output tokens
-                token_count += len(self.tokenizer.encode(message["output"]))
-            token_count += 4  # Overhead per message
-        return token_count
+        tokens = 0
+        for msg in messages:
+            if "content" in msg:
+                tokens += len(self.encoder.encode(msg["content"]))
+            tokens += 4  # Message overhead
+        return tokens
 
-    def _trim_history(self):
-        """Trim old messages to stay under token limit"""
-        current_tokens = self._count_tokens()
+    def add(self, role: str, content: str):
+        """Add message and trim if needed."""
+        self.messages.append({"role": role, "content": content})
+        self._trim_if_needed()
 
-        if current_tokens <= self.max_history_tokens:
-            return
+    def _trim_if_needed(self):
+        """Remove old messages to stay under token limit."""
+        while self.count_tokens() > self.max_tokens and len(self.messages) > 1:
+            # Keep system message if present, remove oldest user/assistant message
+            if self.messages[0].get("role") == "system":
+                self.messages.pop(1)
+            else:
+                self.messages.pop(0)
 
-        print(
-            f"Trimming history: {current_tokens} tokens > {self.max_history_tokens} limit"
-        )
+    def get_messages(self) -> List[Dict]:
+        """Get all messages for API call."""
+        return self.messages
 
-        # Keep system messages, remove oldest user/assistant messages
-        items = self.memory.get_items()
-        system_messages = [msg for msg in items if msg.get("role") == "system"]
-        other_messages = [msg for msg in items if msg.get("role") != "system"]
 
-        # Remove oldest messages until under limit
-        while (
-            self._count_tokens(system_messages + other_messages)
-            > self.max_history_tokens
-            and other_messages
-        ):
-            other_messages.pop(0)
+# Example usage:
+memory = ConversationMemory(max_tokens=500)
+memory.add("system", "You are a helpful assistant.")
+memory.add("user", "Tell me about Paris")
+memory.add("assistant", "Paris is the capital of France...")
 
-        # Rebuild memory with trimmed history
-        self.memory.items = system_messages + other_messages
+# Check token usage
+# memory.count_tokens()
+# memory.get_messages()
+
+
+##=================================================##
+## Conversation Persistence
+##=================================================##
+
+
+class PersistentAgent:
+    """Agent with save/load capabilities."""
+
+    def __init__(self, session_id: str = "default"):
+        self.session_id = session_id
+        self.memory = ConversationMemory()
+        self.client = OpenAI()
 
     def chat(self, message: str) -> str:
-        """Send a message and get a response (with automatic trimming)"""
-        # Trim history before adding new message
-        self._trim_history()
+        """Send message and get response."""
+        self.memory.add("user", message)
 
-        # Call parent chat method
-        return super().chat(message)
+        response = self.client.chat.completions.create(
+            model="gpt-4o-mini", messages=self.memory.get_messages()
+        )
 
-    def save_conversation(self, filepath: str):
-        """Save conversation to JSON file"""
-        with open(filepath, "w") as f:
-            json.dump(self.memory.get_items(), f, indent=2)
-        print(f"Saved to {filepath}")
+        reply = response.choices[0].message.content
+        self.memory.add("assistant", reply)
+        return reply
 
-    def load_conversation(self, filepath: str):
-        """Load conversation from JSON file"""
-        with open(filepath, "r") as f:
-            self.memory.items = json.load(f)
-        print(f"Loaded from {filepath}")
+    def save(self):
+        """Save conversation to file."""
+        filename = f"session_{self.session_id}.json"
+        with open(filename, "w") as f:
+            json.dump(self.memory.messages, f)
+        return filename
 
-    def get_token_count(self) -> int:
-        """Get current token count"""
-        return self._count_tokens()
-
-
-# ============================================================================
-# Usage Examples
-# ============================================================================
-
-
-def token_management_example():
-    """Example 1: Token counting and automatic trimming"""
-    print("=" * 60)
-    print("Example 1: Token Management")
-    print("=" * 60 + "\n")
-
-    # Create agent with low token limit to trigger trimming
-    agent = AgentWithMemory(
-        max_history_tokens=500, system_prompt="You are a helpful assistant."
-    )
-
-    # Have a long conversation to demonstrate trimming
-    for i in range(8):
-        question = f"Tell me a fun fact about the number {i}"
-        print(f"Turn {i + 1}: {question}")
-        agent.chat(question)
-        print(f"Tokens: {agent.get_token_count()}/{agent.max_history_tokens}\n")
+    def load(self):
+        """Load conversation from file."""
+        filename = f"session_{self.session_id}.json"
+        try:
+            with open(filename, "r") as f:
+                self.memory.messages = json.load(f)
+            return True
+        except FileNotFoundError:
+            return False
 
 
-def persistence_example():
-    """Example 2: Save and load conversation state"""
-    print("\n" + "=" * 60)
-    print("Example 2: Conversation Persistence")
-    print("=" * 60 + "\n")
+# Example: Conversation across sessions
+agent = PersistentAgent("user_123")
+agent.chat("My name is Alice")
+agent.chat("I'm learning Python")
+agent.save()
 
-    # Session 1: Have a conversation
-    print("Session 1 - Building context:")
-    agent1 = AgentWithMemory(system_prompt="You are a helpful assistant.")
-    agent1.chat("My name is John")
-    agent1.chat("I live in Paris")
-    agent1.chat("I'm a software engineer")
-
-    # Save conversation state
-    agent1.save_conversation("/tmp/conversation.json")
-
-    # Session 2: Load in new agent (simulating server restart)
-    print("\nSession 2 - After restart:")
-    agent2 = AgentWithMemory(system_prompt="You are a helpful assistant.")
-    agent2.load_conversation("/tmp/conversation.json")
-
-    # Agent remembers context from previous session
-    print("User: What's my name and where do I live?")
-    answer = agent2.chat("What's my name and where do I live?")
-    print(f"Assistant: {answer}")
+# Later (new session)
+agent2 = PersistentAgent("user_123")
+agent2.load()
+# agent2.chat("What's my name?")  # Will remember Alice
 
 
-def redis_persistence_example():
-    """Example 3: Redis persistence for production (optional)"""
-    try:
-        import redis
-    except ImportError:
-        print("\n=== Redis Persistence ===")
-        print("Redis not installed. Run: uv add redis")
-        print("Skipping Redis example.\n")
-        return
-
-    print("\n=== Redis Persistence (Production) ===\n")
-
-    try:
-        # Try to connect to Redis
-        r = redis.Redis(host="localhost", port=6379, decode_responses=True)
-        r.ping()
-    except (redis.ConnectionError, Exception) as e:
-        print(f"Redis not available: {e}")
-        print("Start Redis with: docker run -d -p 6379:6379 redis:latest")
-        print("Skipping Redis example.\n")
-        return
-
-    # Create a simple Redis-backed memory store
-    session_id = "user_alice"
-    key = f"agent:session:{session_id}"
-
-    print(f"Session 1: Creating conversation for {session_id}")
-
-    # Simulate saving messages
-    conversation = [
-        {"role": "user", "content": "My favorite color is blue"},
-        {
-            "role": "assistant",
-            "content": "I'll remember that your favorite color is blue!",
-        },
-        {"role": "user", "content": "I live in Tokyo"},
-        {"role": "assistant", "content": "Got it! You live in Tokyo."},
-    ]
-
-    r.setex(key, 86400, json.dumps(conversation))  # TTL: 24 hours
-    print(f"Saved {len(conversation)} messages to Redis with 24-hour TTL\n")
-
-    print("Session 2: Loading conversation (simulating server restart)")
-
-    # Load from Redis
-    data = r.get(key)
-    if data:
-        loaded_conversation = json.loads(data)
-        print(f"Loaded {len(loaded_conversation)} messages from Redis")
-        print("\nConversation history:")
-        for msg in loaded_conversation:
-            print(f"  {msg['role']}: {msg['content']}")
-
-    print("\n✓ Redis persistence working! Session survives restarts.\n")
-
-    # Cleanup
-    r.delete(key)
+##=================================================##
+## Redis for Production (Optional)
+##=================================================##
 
 
-def mem0_semantic_memory_example():
-    """Example 4: Mem0 for semantic, long-term memory (optional)"""
-    try:
-        from mem0 import Memory
-    except ImportError:
-        print("\n=== Mem0 Semantic Memory ===")
-        print("Mem0 not installed. Run: uv add mem0ai")
-        print("Skipping Mem0 example.\n")
-        return
+class RedisMemory:
+    """Production-ready memory with Redis backend."""
 
-    print("\n=== Mem0 Semantic Memory ===\n")
-    print(
-        "Mem0 provides semantic search over memories, not just chronological storage.\n"
-    )
+    def __init__(self, session_id: str, ttl: int = 86400):
+        self.session_id = session_id
+        self.ttl = ttl  # Time to live in seconds (default 24h)
+        self.redis = redis.Redis(decode_responses=True)
+        self.key = f"chat:{session_id}"
 
-    try:
-        # Initialize Mem0 (uses local vector store by default)
-        memory = Memory()
+    def save(self, messages: List[Dict]):
+        """Save messages to Redis with TTL."""
+        self.redis.setex(self.key, self.ttl, json.dumps(messages))
 
-        # User context
-        user_id = "john_doe"
+    def load(self) -> List[Dict]:
+        """Load messages from Redis."""
+        data = self.redis.get(self.key)
+        return json.loads(data) if data else []
 
-        print("Step 1: Adding memories for user")
-        print("-" * 50)
-
-        # Add various memories with context
-        memories_to_add = [
-            "User prefers Python over JavaScript for backend development",
-            "User is working on an e-commerce project with a $50,000 budget",
-            "User's team uses React for frontend",
-            "User mentioned they have a tight deadline - project due in 3 weeks",
-            "User is interested in implementing AI features",
-        ]
-
-        for mem in memories_to_add:
-            memory.add(mem, user_id=user_id)
-            print(f"  ✓ Added: {mem}")
-
-        print("\nStep 2: Semantic search for relevant memories")
-        print("-" * 50)
-
-        # Query 1: Technology recommendations
-        query1 = "What technology stack should I use for my project?"
-        print(f"\nQuery: '{query1}'")
-        print("Relevant memories:")
-
-        results = memory.search(query1, user_id=user_id)
-        for i, result in enumerate(results[:3], 1):
-            print(f"  {i}. {result['memory']}")
-
-        # Query 2: Project constraints
-        query2 = "What are my project constraints?"
-        print(f"\nQuery: '{query2}'")
-        print("Relevant memories:")
-
-        results = memory.search(query2, user_id=user_id)
-        for i, result in enumerate(results[:3], 1):
-            print(f"  {i}. {result['memory']}")
-
-        print("\nStep 3: Multi-user isolation")
-        print("-" * 50)
-
-        # Add memory for different user
-        other_user_id = "jane_smith"
-        memory.add("User is learning Rust programming", user_id=other_user_id)
-
-        # Search only returns memories for john_doe, not jane_smith
-        results = memory.search("What is the user learning?", user_id=user_id)
-        print(f"Searching for john_doe's learning activities: {len(results)} results")
-        print("(Correctly isolated from jane_smith's memories)")
-
-        print("\n✓ Mem0 semantic memory working!")
-        print("Key benefit: Retrieves relevant memories, not just recent ones\n")
-
-    except Exception as e:
-        print(f"Error with Mem0: {e}")
-        print("Note: Mem0 requires additional setup for production use")
-        print("See: https://docs.mem0.ai/quickstart\n")
+    def extend_ttl(self):
+        """Extend session TTL on activity."""
+        self.redis.expire(self.key, self.ttl)
 
 
-if __name__ == "__main__":
-    token_management_example()
-    persistence_example()
-    redis_persistence_example()
-    mem0_semantic_memory_example()
+# Usage (requires Redis running):
+# memory = RedisMemory("user_123")
+# memory.save([{"role": "user", "content": "Hello"}])
+# messages = memory.load()
+
+
+##=================================================##
+## Semantic Memory with Embeddings
+##=================================================##
+
+
+class SemanticMemory:
+    """
+    Store and retrieve memories by semantic similarity.
+    Simplified version - production would use vector DB.
+    """
+
+    def __init__(self):
+        self.memories = []
+        self.embeddings = []
+        self.client = OpenAI()
+
+    def _get_embedding(self, text: str) -> List[float]:
+        """Get embedding for text."""
+        response = self.client.embeddings.create(
+            model="text-embedding-3-small", input=text
+        )
+        return response.data[0].embedding
+
+    def add(self, memory: str):
+        """Add memory with its embedding."""
+        embedding = self._get_embedding(memory)
+        self.memories.append(memory)
+        self.embeddings.append(embedding)
+
+    def search(self, query: str, top_k: int = 3) -> List[Tuple[str, float]]:
+        """Find most relevant memories for query."""
+        if not self.memories:
+            return []
+
+        # Get query embedding
+        query_embedding = np.array(self._get_embedding(query))
+
+        # Calculate similarities
+        similarities = []
+        for i, emb in enumerate(self.embeddings):
+            similarity = np.dot(query_embedding, emb)
+            similarities.append((self.memories[i], similarity))
+
+        # Return top results
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        return similarities[:top_k]
+
+
+# Example: Context-aware retrieval
+semantic = SemanticMemory()
+semantic.add("User prefers Python for data science")
+semantic.add("User is working on a recommendation system")
+semantic.add("User's budget is $10,000")
+
+# Query relevant context
+# results = semantic.search("What programming language should I use?")
+# for memory, score in results:
+#     print(f"{score:.3f}: {memory}")
+
+
+##=================================================##
+## Practical Example: Customer Support Bot
+##=================================================##
+
+
+class SupportBot:
+    """Customer support bot with memory management."""
+
+    def __init__(self, customer_id: str):
+        self.customer_id = customer_id
+        self.memory = ConversationMemory(max_tokens=1000)
+        self.context = SemanticMemory()
+        self.client = OpenAI()
+
+        # Load customer context
+        self._load_customer_context()
+
+    def _load_customer_context(self):
+        """Load relevant customer data."""
+        # In production, load from database
+        self.context.add(f"Customer {self.customer_id} has premium account")
+        self.context.add(f"Customer previously had shipping issues")
+        self.context.add(f"Customer prefers email communication")
+
+    def handle_query(self, query: str) -> str:
+        """Handle customer query with context."""
+        # Find relevant context
+        relevant_context = self.context.search(query, top_k=2)
+        context_str = "\n".join([m for m, _ in relevant_context])
+
+        # Build prompt with context
+        prompt = f"""Customer context:
+{context_str}
+
+Current query: {query}
+
+Provide helpful response."""
+
+        self.memory.add("user", prompt)
+
+        response = self.client.chat.completions.create(
+            model="gpt-4o-mini", messages=self.memory.get_messages()
+        )
+
+        reply = response.choices[0].message.content
+        self.memory.add("assistant", reply)
+
+        return reply
+
+
+# Example:
+# bot = SupportBot("customer_123")
+# bot.handle_query("My order hasn't arrived yet")
+# bot.handle_query("Can you send me an update?")

@@ -294,15 +294,16 @@ You'll see examples of:
 
 ## When to Use Structured Output
 
-| Use Case | Use Structured Output? |
-|----------|----------------------|
-| Extract emails, dates, names from text | ✅ Yes |
-| Classify sentiment, categories, intent | ✅ Yes |
-| Parse invoices, receipts, documents | ✅ Yes |
-| Generate forms, surveys, data entry | ✅ Yes |
-| Creative writing or explanations | ❌ No |
-| Code generation | ❌ No (use plain text) |
-| Chat conversations | ❌ No (unless extracting data) |
+**Use structured output for:**
+- Extracting emails, dates, names from text ✅
+- Classifying sentiment, categories, intent ✅
+- Parsing invoices, receipts, documents ✅
+- Generating forms, surveys, data entry ✅
+
+**Don't use structured output for:**
+- Creative writing or explanations ❌
+- Code generation (use plain text) ❌
+- Chat conversations (unless extracting data) ❌
 
 Use structured output when you need reliable, typed data. Use plain text when you need creativity and flexibility.
 

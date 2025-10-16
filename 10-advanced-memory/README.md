@@ -39,11 +39,20 @@ When you exceed this limit, the API rejects your request.
 
 ### Token Limits by Model (as of 2024)
 
-| Model | Context Window | Input Cost (per 1M) | Output Cost (per 1M) |
-|-------|----------------|---------------------|----------------------|
-| GPT-4o | 128,000 tokens | $2.50 | $10.00 |
-| GPT-4o-mini | 128,000 tokens | $0.15 | $0.60 |
-| GPT-3.5-turbo | 16,385 tokens | $0.50 | $1.50 |
+**GPT-4o:**
+- Context Window: 128,000 tokens
+- Input Cost: $2.50 per 1M tokens
+- Output Cost: $10.00 per 1M tokens
+
+**GPT-4o-mini:**
+- Context Window: 128,000 tokens
+- Input Cost: $0.15 per 1M tokens
+- Output Cost: $0.60 per 1M tokens
+
+**GPT-3.5-turbo:**
+- Context Window: 16,385 tokens
+- Input Cost: $0.50 per 1M tokens
+- Output Cost: $1.50 per 1M tokens
 
 A typical conversation message is 50-200 tokens. Tool calls add 100-500 tokens each. Long research tasks easily hit 10,000+ tokens.
 
@@ -282,11 +291,20 @@ Summarization costs an extra API call but preserves more context than simple tri
 
 ### When to Use Each Strategy
 
-| Strategy | Best For | Pros | Cons |
-|----------|----------|------|------|
-| **Simple Trimming** | Short sessions, quick prototypes | Fast, no extra API calls | Loses context |
-| **Sliding Window** | Most production use cases | Balances recency and performance | May lose important early context |
-| **Summarization** | Long research sessions, debugging | Preserves more information | Extra API calls, slight latency |
+**Simple Trimming:**
+- Best For: Short sessions, quick prototypes
+- Pros: Fast, no extra API calls
+- Cons: Loses context
+
+**Sliding Window:**
+- Best For: Most production use cases
+- Pros: Balances recency and performance
+- Cons: May lose important early context
+
+**Summarization:**
+- Best For: Long research sessions, debugging
+- Pros: Preserves more information
+- Cons: Extra API calls, slight latency
 
 Default to sliding window for most applications.
 
@@ -600,13 +618,40 @@ uv run example.py
 
 ### Comparison: DIY vs Managed
 
-| Approach | Setup | Cost | Control | Semantic Search | Best For |
-|----------|-------|------|---------|-----------------|----------|
-| **File-based (JSON)** | None | Free | Full | ❌ | Development, testing |
-| **Redis (self-hosted)** | Medium | Server costs | Full | ❌ | Production, custom needs, full control |
-| **Redis Cloud** | Low | $5-50/mo | Medium | ❌ | Production, less ops work |
-| **Mem0** | None | Usage-based | Limited | ✅ | Fast MVP, semantic memory features |
-| **LangChain Memory** | Medium | Free + compute | Medium | ⚠️ | If using LangChain already |
+**File-based (JSON):**
+- Setup: None
+- Cost: Free
+- Control: Full
+- Semantic Search: ❌
+- Best For: Development, testing
+
+**Redis (self-hosted):**
+- Setup: Medium
+- Cost: Server costs
+- Control: Full
+- Semantic Search: ❌
+- Best For: Production, custom needs, full control
+
+**Redis Cloud:**
+- Setup: Low
+- Cost: $5-50/mo
+- Control: Medium
+- Semantic Search: ❌
+- Best For: Production, less ops work
+
+**Mem0:**
+- Setup: None
+- Cost: Usage-based
+- Control: Limited
+- Semantic Search: ✅
+- Best For: Fast MVP, semantic memory features
+
+**LangChain Memory:**
+- Setup: Medium
+- Cost: Free + compute
+- Control: Medium
+- Semantic Search: ⚠️
+- Best For: If using LangChain already
 
 **When to use what:**
 

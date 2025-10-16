@@ -369,15 +369,16 @@ When the tool fails, the LLM receives the error and explains it naturally to the
 
 ## When to Use Tool Calling
 
-| Use Case | Use Tool Calling? |
-|----------|------------------|
-| Get current data (weather, stocks, prices) | Yes |
-| Search databases or APIs | Yes |
-| Perform calculations or conversions | Yes |
-| Send emails, create tickets, update records | Yes |
-| Extract structured data from text | No (use structured output) |
-| Answer from existing knowledge | No (use prompting or RAG) |
-| Creative writing or explanations | No (use plain text) |
+**Use tool calling when you need to:**
+- Get current data (weather, stocks, prices)
+- Search databases or APIs
+- Perform calculations or conversions
+- Send emails, create tickets, update records
+
+**Don't use tool calling for:**
+- Extracting structured data from text (use structured output instead)
+- Answering from existing knowledge (use prompting or RAG)
+- Creative writing or explanations (use plain text)
 
 Use tool calling when the LLM needs to interact with external systems or perform actions. Use structured output for data extraction. Use plain prompting when the LLM has enough knowledge.
 

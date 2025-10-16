@@ -1,279 +1,105 @@
 """
-Lesson 05: Workflow Patterns
+Lesson 03: Structured Output with Pydantic
 
-Learn to orchestrate multiple LLM calls using five fundamental patterns:
-1. Prompt Chaining - Sequential workflows
-2. Routing - Conditional branching
-3. Parallelization - Concurrent execution
-4. Orchestrator-Workers - Dynamic task decomposition
-5. Evaluator-Optimizer - Generate-evaluate-refine loops
-
-Run each pattern in separate Jupyter cells to see the results.
+Learn how to get type-safe, validated JSON responses using Pydantic models.
 """
 
-import asyncio
-import time
-
-from typing import Literal, List
-from openai import AsyncOpenAI
-from pydantic import BaseModel
+from openai import OpenAI
+from pydantic import BaseModel, Field
+from typing import Literal, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = AsyncOpenAI()
+client = OpenAI()
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
+##=================================================##
+## Example 1: Basic Extraction
+##=================================================##
 
 
-async def llm(prompt: str, instructions: str = "", model: str = "gpt-4o-mini") -> str:
-    """Simple async LLM call."""
-    response = await client.responses.create(
-        model=model,
-        instructions=instructions if instructions else None,
-        input=prompt,
-    )
-    return response.output_text
+class CalendarEvent(BaseModel):
+    title: str
+    date: str  # YYYY-MM-DD
+    time: str  # HH:MM
+    attendees: list[str]
 
 
-# ============================================================================
-# PATTERN 1: PROMPT CHAINING
-# Sequential steps where each builds on the previous
-# ============================================================================
+# Natural language → Structured data
+text = "Schedule Q4 planning with John and Sarah next Friday at 2pm"
 
+response = client.responses.parse(
+    model="gpt-4o-mini", input=text, text_format=CalendarEvent
+)
+event = response.output_parsed
 
-async def prompt_chaining(topic: str = "AI agents"):
-    """
-    Chain multiple LLM calls sequentially.
-    Each step depends on the previous step's output.
-    """
-    # Step 1: Create outline
-    outline = await llm(f"Create a 3-point outline for: {topic}")
+# Access fields: event.title, event.date, event.attendees
 
-    # Step 2: Write draft based on outline
-    draft = await llm(f"Write the first point (100 words):\n{outline}")
 
-    # Step 3: Polish the draft
-    final = await llm(f"Edit for clarity and conciseness:\n{draft}")
+##=================================================##
+## Example 2: Classification with Validation
+##=================================================##
 
-    return {"outline": outline, "draft": draft, "final": final}
 
+class SupportTicket(BaseModel):
+    customer_name: str
+    issue_type: Literal["technical", "billing", "shipping", "other"]
+    priority: Literal["low", "medium", "high", "urgent"]
+    order_id: Optional[str] = None
+    summary: str
+    next_action: str
 
-# Run in Jupyter:
-# result = await prompt_chaining("machine learning basics")
-# print(result["final"])
 
+# Parse customer email into ticket
+email = """
+From: Jane Smith
+Order #12345 hasn't arrived and I need it for tomorrow's presentation!
+Please overnight a replacement or refund me immediately.
+"""
 
-# ============================================================================
-# PATTERN 2: ROUTING
-# Classify query type and route to specialized handlers
-# ============================================================================
+response = client.responses.parse(
+    model="gpt-4o-mini", input=email, text_format=SupportTicket
+)
+ticket = response.output_parsed
 
+# Automatic validation and categorization
+# ticket.priority → "urgent"
+# ticket.issue_type → "shipping"
 
-class SupportCategory(BaseModel):
-    category: Literal["shipping", "refund", "technical", "general"]
-    urgency: Literal["high", "medium", "low"]
 
+##=================================================##
+## Example 3: Nested Structures
+##=================================================##
 
-async def routing(customer_query: str):
-    """
-    Route customer queries to specialized handlers.
-    Different response strategies for different issue types.
-    """
-    # Classify the query
-    classification = await client.responses.parse(
-        model="gpt-4o-mini",
-        input=f"Classify this customer support query: {customer_query}",
-        text_format=SupportCategory,
-    )
-    category = classification.output_parsed.category
-    urgency = classification.output_parsed.urgency
 
-    # Route to appropriate specialist
-    specialists = {
-        "shipping": "You are a shipping specialist. Check tracking info and provide delivery estimates.",
-        "refund": "You are a refund specialist. Be empathetic about payment issues and explain the process.",
-        "technical": "You are a technical support expert. Provide clear troubleshooting steps.",
-        "general": "You are a friendly customer service representative.",
-    }
+class Sentiment(BaseModel):
+    score: float  # -1 to 1
+    label: Literal["negative", "neutral", "positive"]
 
-    # Add urgency context
-    instructions = specialists[category]
-    if urgency == "high":
-        instructions += " This is urgent - prioritize immediate resolution."
 
-    response = await llm(customer_query, instructions=instructions)
+class ProductReview(BaseModel):
+    product: str
+    rating: int = Field(ge=1, le=5)
+    sentiment: Sentiment
+    pros: list[str]
+    cons: list[str]
+    would_recommend: bool
 
-    return {
-        "query": customer_query,
-        "category": category,
-        "urgency": urgency,
-        "response": response,
-    }
 
+# Analyze complex review
+review = """
+iPhone 15 Pro: 4/5 stars
+Amazing camera and build quality. Photos are incredible!
+But battery life is disappointing and it's overpriced.
+Would recommend if you can afford it.
+"""
 
-# await routing("Urgent! I need a refind on my order!!")
+response = client.responses.parse(
+    model="gpt-4o-mini", input=review, text_format=ProductReview
+)
+analysis = response.output_parsed
 
-# ============================================================================
-# PATTERN 3: PARALLELIZATION
-# Process multiple items concurrently
-# ============================================================================
-
-
-async def parallelization(emails: List[str]):
-    """
-    Process multiple items in parallel for speed.
-    Much faster than sequential processing.
-    """
-
-    async def classify_email(email: str) -> str:
-        return await llm(
-            f"Classify as spam/urgent/normal/newsletter (one word only): {email}"
-        )
-
-    # Process all emails concurrently
-    start = time.time()
-    results = await asyncio.gather(*[classify_email(email) for email in emails])
-    elapsed = time.time() - start
-
-    return {"emails": emails, "classifications": results, "time": elapsed}
-
-
-# emails = [
-#     "URGENT: Your account will be suspended!",
-#     "Weekly AI newsletter",
-#     "Meeting reminder: 3pm today"
-# ]
-# result = await parallelization(emails)
-# for email, classification in zip(result["emails"], result["classifications"]):
-#     print(f"{email[:30]}... → {classification}")
-
-
-# ============================================================================
-# PATTERN 4: ORCHESTRATOR-WORKERS
-# Decompose task dynamically, execute in parallel
-# ============================================================================
-
-
-class TaskPlan(BaseModel):
-    subtasks: List[str]
-
-
-async def orchestrator_workers(task: str):
-    """
-    Orchestrator decomposes task, workers execute in parallel.
-    Dynamic task breakdown based on the input.
-    """
-    # Orchestrator: decompose task
-    plan = await client.responses.parse(
-        model="gpt-4o-mini",
-        input=f"Break this into 3 specific subtasks: {task}",
-        text_format=TaskPlan,
-    )
-    subtasks = plan.output_parsed.subtasks
-
-    # Workers: execute subtasks in parallel
-    results = await asyncio.gather(
-        *[llm(f"Complete this task: {subtask}") for subtask in subtasks]
-    )
-
-    # Orchestrator: synthesize results
-    synthesis = await llm(
-        f"Combine these results for '{task}':\n"
-        + "\n".join([f"- {r}" for r in results])
-    )
-
-    return {"task": task, "subtasks": subtasks, "synthesis": synthesis}
-
-
-# Run in Jupyter:
-# result = await orchestrator_workers("Plan a product launch")
-# print("Subtasks:", result["subtasks"])
-# print("\nSynthesis:", result["synthesis"])
-
-
-# ============================================================================
-# PATTERN 5: EVALUATOR-OPTIMIZER
-# Generate → Evaluate → Refine loop
-# ============================================================================
-
-
-class Evaluation(BaseModel):
-    score: int  # 1-10
-    feedback: str
-
-
-async def evaluator_optimizer(
-    task: str, target_score: int = 8, max_iterations: int = 3
-):
-    """
-    Generate-evaluate-refine loop with quality control.
-    Iterates until quality threshold is met.
-    """
-    draft = await llm(task)
-
-    for iteration in range(max_iterations):
-        # Evaluate current version
-        evaluation = await client.responses.parse(
-            model="gpt-4o-mini",
-            input=f"Score 1-10 and give brief feedback:\n{draft}",
-            text_format=Evaluation,
-        )
-
-        score = evaluation.output_parsed.score
-        feedback = evaluation.output_parsed.feedback
-
-        # Check if good enough
-        if score >= target_score:
-            return {"final": draft, "score": score, "iterations": iteration + 1}
-
-        # Refine based on feedback
-        draft = await llm(f"Improve based on: {feedback}\n\nCurrent:\n{draft}")
-
-    return {"final": draft, "score": score, "iterations": max_iterations}
-
-
-# Run in Jupyter:
-# result = await evaluator_optimizer("Write a Python function for binary search")
-# print(f"Score: {result['score']}/10 after {result['iterations']} iterations")
-# print(f"\nFinal:\n{result['final']}")
-
-
-# ============================================================================
-# COMPARISON: Run all patterns
-# ============================================================================
-
-
-async def demo_all_patterns():
-    """
-    Demonstrate all 5 patterns with simple examples.
-    Run this to see all patterns in action.
-    """
-    print("1. PROMPT CHAINING")
-    chain_result = await prompt_chaining("neural networks")
-    print(f"   Generated {len(chain_result['final'])} chars\n")
-
-    print("2. ROUTING")
-    route_result = await routing("How do I reset my password?")
-    print(f"   Routed to: {route_result['category']}\n")
-
-    print("3. PARALLELIZATION")
-    emails = ["Meeting at 3pm", "50% off sale!", "Project update"]
-    parallel_result = await parallelization(emails)
-    print(f"   Processed {len(emails)} emails in {parallel_result['time']:.2f}s\n")
-
-    print("4. ORCHESTRATOR-WORKERS")
-    orchestrator_result = await orchestrator_workers("Write a blog post")
-    print(f"   Created {len(orchestrator_result['subtasks'])} subtasks\n")
-
-    print("5. EVALUATOR-OPTIMIZER")
-    optimizer_result = await evaluator_optimizer("Hello world in Python")
-    print(
-        f"   Score: {optimizer_result['score']}/10 after {optimizer_result['iterations']} iterations"
-    )
-
-
-# Run in Jupyter:
-# await demo_all_patterns()
+# Access nested data
+# analysis.sentiment.label
+# analysis.pros
+# analysis.rating
